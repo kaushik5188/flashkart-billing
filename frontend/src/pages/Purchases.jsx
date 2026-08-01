@@ -93,9 +93,10 @@ export default function Purchases({ token, API_URL }) {
 
   const updateCartItem = (index, field, value) => {
     const newCart = [...cart];
-    newCart[index][field] = value;
-    
+    // Always store numbers for quantity and total_amount
     if (field === 'quantity' || field === 'total_amount') {
+      newCart[index][field] = value === '' ? '' : parseFloat(value);
+      
       const q = parseFloat(newCart[index].quantity) || 0;
       const amt = parseFloat(newCart[index].total_amount) || 0;
       if (q > 0) {
@@ -103,6 +104,8 @@ export default function Purchases({ token, API_URL }) {
       } else {
         newCart[index].purchase_rate = 0;
       }
+    } else {
+      newCart[index][field] = value;
     }
     setCart(newCart);
   };
@@ -115,7 +118,7 @@ export default function Purchases({ token, API_URL }) {
   };
 
   // Calculations
-  const baseAmount = cart.reduce((sum, item) => sum + item.total_amount, 0);
+  const baseAmount = cart.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
   const t = parseFloat(formData.transport_charge) || 0;
   const l = parseFloat(formData.labour_charge) || 0;
   const o = parseFloat(formData.other_charge) || 0;
