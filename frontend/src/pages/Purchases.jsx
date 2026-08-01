@@ -20,7 +20,7 @@ export default function Purchases({ token, API_URL }) {
   // Meta data for the invoice
   const [formData, setFormData] = useState({
     purchase_date: today(),
-    supplier_id: '',
+    supplier_name: '',
     partner_id: '',
     market_name: '',
     transport_charge: '',
@@ -34,7 +34,7 @@ export default function Purchases({ token, API_URL }) {
   const [currentItem, setCurrentItem] = useState({
     vegetable_name: '',
     quantity: '',
-    purchase_rate: ''
+    total_amount: ''
   });
 
   // The shopping cart (array of items)
@@ -72,20 +72,21 @@ export default function Purchases({ token, API_URL }) {
   const handleAddItem = () => {
     if (!currentItem.vegetable_name.trim()) return setError('Please enter a vegetable name');
     if (!currentItem.quantity || parseFloat(currentItem.quantity) <= 0) return setError('Invalid quantity');
-    if (!currentItem.purchase_rate || parseFloat(currentItem.purchase_rate) < 0) return setError('Invalid rate');
+    if (!currentItem.total_amount || parseFloat(currentItem.total_amount) < 0) return setError('Invalid amount');
 
     const q = parseFloat(currentItem.quantity);
-    const r = parseFloat(currentItem.purchase_rate);
+    const amount = parseFloat(currentItem.total_amount);
+    const r = amount / q; // Auto-calculate rate
 
     setCart([...cart, {
       vegetable_name: currentItem.vegetable_name.trim(),
       quantity: q,
-      purchase_rate: r,
-      total_amount: q * r
+      purchase_rate: parseFloat(r.toFixed(2)),
+      total_amount: amount
     }]);
 
     // Reset item form
-    setCurrentItem({ vegetable_name: '', quantity: '', purchase_rate: '' });
+    setCurrentItem({ vegetable_name: '', quantity: '', total_amount: '' });
     setError('');
   };
 
@@ -222,10 +223,7 @@ export default function Purchases({ token, API_URL }) {
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Vendor / Supplier *</label>
-                  <select name="supplier_id" className="form-control" value={formData.supplier_id} onChange={handleChange} required>
-                    <option value="">-- Select Supplier --</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.place})</option>)}
-                  </select>
+                  <input type="text" name="supplier_name" className="form-control" placeholder="e.g. Patel Vegetables" value={formData.supplier_name} onChange={handleChange} required />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Paid By (Partner)</label>
@@ -251,18 +249,22 @@ export default function Purchases({ token, API_URL }) {
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'end', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-light)' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Vegetable Name *</label>
-                  <input type="text" name="vegetable_name" className="form-control" placeholder="e.g. Tomato (Special)" value={currentItem.vegetable_name} onChange={handleItemChange} />
+                  <input type="text" name="vegetable_name" className="form-control" placeholder="e.g. Potato" value={currentItem.vegetable_name} onChange={handleItemChange} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Quantity *</label>
-                  <input type="number" step="0.01" name="quantity" className="form-control" placeholder="e.g. 200" value={currentItem.quantity} onChange={handleItemChange} />
+                  <label className="form-label">Total Amount Paid (₹) *</label>
+                  <input type="number" step="0.01" name="total_amount" className="form-control" placeholder="e.g. 800" value={currentItem.total_amount} onChange={handleItemChange} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Rate (₹) *</label>
-                  <input type="number" step="0.01" name="purchase_rate" className="form-control" placeholder="e.g. 18.5" value={currentItem.purchase_rate} onChange={handleItemChange} />
+                  <label className="form-label">Total Weight (KG) *</label>
+                  <input type="number" step="0.01" name="quantity" className="form-control" placeholder="e.g. 40" value={currentItem.quantity} onChange={handleItemChange} />
                 </div>
-                <button type="button" onClick={handleAddItem} className="btn btn-secondary" style={{ height: '42px', padding: '0 1.5rem', borderColor: 'var(--color-green)', color: 'var(--color-green)' }}>
-                  <Plus size={16} /> Add
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '0.65rem' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Auto Calculated</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 600 }}>Price/KG: ₹{ (parseFloat(currentItem.total_amount) && parseFloat(currentItem.quantity)) ? (parseFloat(currentItem.total_amount) / parseFloat(currentItem.quantity)).toFixed(2) : '0.00' }</div>
+                </div>
+                <button type="button" onClick={handleAddItem} className="btn btn-secondary" style={{ height: '42px', padding: '0 1.5rem', borderColor: 'var(--color-green)', color: 'var(--color-green)', gridColumn: '1 / -1' }}>
+                  <Plus size={16} /> Add Another Item
                 </button>
               </div>
 
@@ -345,9 +347,11 @@ export default function Purchases({ token, API_URL }) {
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
                   <select name="payment_method" className="form-control" style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }} value={formData.payment_method} onChange={handleChange}>
-                    <option style={{color: '#000'}} value="Cash">Cash (Paid)</option>
-                    <option style={{color: '#000'}} value="Credit">Credit (Unpaid)</option>
+                    <option style={{color: '#000'}} value="Cash">Cash</option>
                     <option style={{color: '#000'}} value="UPI">UPI</option>
+                    <option style={{color: '#000'}} value="Bank">Bank</option>
+                    <option style={{color: '#000'}} value="Credit">Credit</option>
+                    <option style={{color: '#000'}} value="FlashKart">FlashKart</option>
                   </select>
                 </div>
                 <button type="submit" className="btn" disabled={loading} style={{ 

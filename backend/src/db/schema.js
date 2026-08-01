@@ -341,6 +341,13 @@ async function initSchema() {
   } catch (err) {
     // Ignore error if column already exists
   }
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN supplier_name VARCHAR(255)");
+    console.log("Migration: Added supplier_name to purchase_invoices");
+  } catch (err) {
+    // Ignore
+  }
 }
 
 module.exports = {

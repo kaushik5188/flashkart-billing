@@ -24,9 +24,7 @@ export default function Sidebar({ currentView, setView, user, logout, theme, tog
     { id: 'billing', name: 'New Bill', icon: Receipt },
     { id: 'bills', name: 'All Bills', icon: FileText },
     { id: 'purchases', name: 'Purchases', icon: ShoppingCart },
-    { id: 'inventory', name: 'Inventory', icon: Boxes },
     { id: 'customers', name: 'Customers', icon: Users },
-    { id: 'suppliers', name: 'Suppliers', icon: Truck },
     { id: 'expenses', name: 'Expenses', icon: Wallet },
     { id: 'reports', name: 'Reports', icon: BarChart3 },
     ...(user?.role === 'admin' ? [
