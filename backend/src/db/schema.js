@@ -192,18 +192,16 @@ async function initSchema() {
     )
   `);
 
-  // 13. purchases table
+  // 13. purchase_invoices table (Cart structure)
   await query(`
-    CREATE TABLE IF NOT EXISTS purchases (
+    CREATE TABLE IF NOT EXISTS purchase_invoices (
       id ${pk},
       supplier_id INTEGER,
       partner_id INTEGER,
       purchase_date VARCHAR(100) NOT NULL,
       market_name VARCHAR(255),
-      product_id INTEGER NOT NULL,
-      quantity ${doubleType} NOT NULL,
-      purchase_rate ${doubleType} NOT NULL,
-      total_amount ${doubleType} NOT NULL,
+      total_items INTEGER DEFAULT 0,
+      base_amount ${doubleType} DEFAULT 0,
       transport_charge ${doubleType} DEFAULT 0,
       labour_charge ${doubleType} DEFAULT 0,
       other_charges ${doubleType} DEFAULT 0,
@@ -212,6 +210,20 @@ async function initSchema() {
       remark TEXT,
       bill_photo VARCHAR(255),
       created_at ${datetimeType}
+    )
+  `);
+
+  // 13a. purchase_items table (Individual vegetables in the cart)
+  await query(`
+    CREATE TABLE IF NOT EXISTS purchase_items (
+      id ${pk},
+      purchase_invoice_id INTEGER NOT NULL,
+      vegetable_name VARCHAR(255) NOT NULL,
+      quantity ${doubleType} NOT NULL,
+      purchase_rate ${doubleType} NOT NULL,
+      total_amount ${doubleType} NOT NULL,
+      created_at ${datetimeType},
+      FOREIGN KEY(purchase_invoice_id) REFERENCES purchase_invoices(id)
     )
   `);
 

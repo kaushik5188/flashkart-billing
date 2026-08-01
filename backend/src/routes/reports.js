@@ -14,7 +14,7 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const salesToday = todaySales[0].total || 0;
 
     // 2. Today's Purchases
-    const todayPurchases = await query('SELECT SUM(grand_total) as total FROM purchases WHERE purchase_date = ?', [todayStr]);
+    const todayPurchases = await query('SELECT SUM(grand_total) as total FROM purchase_invoices WHERE purchase_date = ?', [todayStr]);
     const purchasesToday = todayPurchases[0].total || 0;
 
     // 3. Today's Expenses
@@ -105,8 +105,8 @@ router.get('/charts', verifyToken, async (req, res) => {
 
     // 2. Purchases
     const purchasesSql = isYear ?
-      `SELECT SUBSTR(purchase_date, 1, 7) as label, SUM(grand_total) as purchases FROM purchases WHERE purchase_date LIKE ? GROUP BY label ORDER BY label DESC` :
-      `SELECT purchase_date as label, SUM(grand_total) as purchases FROM purchases GROUP BY label ORDER BY label DESC ${limitClause}`;
+      `SELECT SUBSTR(purchase_date, 1, 7) as label, SUM(grand_total) as purchases FROM purchase_invoices WHERE purchase_date LIKE ? GROUP BY label ORDER BY label DESC` :
+      `SELECT purchase_date as label, SUM(grand_total) as purchases FROM purchase_invoices GROUP BY label ORDER BY label DESC ${limitClause}`;
     const purchasesData = await query(purchasesSql, params);
 
     // 3. Expenses
