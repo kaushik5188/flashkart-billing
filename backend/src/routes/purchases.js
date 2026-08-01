@@ -104,8 +104,8 @@ router.delete('/:id', verifyToken, async (req, res) => {
     await query('BEGIN TRANSACTION');
     
     // Reverse Partner Expenses / Expenses
-    await query(`DELETE FROM partner_expenses WHERE remark = ?`, [\`Market Purchase INV-\${req.params.id}\`]);
-    await query(`DELETE FROM expenses WHERE remark = ?`, [\`Market Purchase INV-\${req.params.id}\`]);
+    await query(`DELETE FROM partner_expenses WHERE remark = ?`, [`Market Purchase INV-${req.params.id}`]);
+    await query(`DELETE FROM expenses WHERE remark = ?`, [`Market Purchase INV-${req.params.id}`]);
     
     // Delete items and invoice
     await query(`DELETE FROM purchase_items WHERE purchase_invoice_id = ?`, [req.params.id]);
