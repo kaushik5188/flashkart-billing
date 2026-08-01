@@ -1,0 +1,13 @@
+{
+  "name": "flashkart-backend",
+  "version": "1.0.0",
+  "description": "FLASHKART - Billing & Inventory Management System Backend API",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": ["flashkart", "billing", "inventory", "vegetables"],
+  "author": "Kaushik Patel & Om Patel",
+  "license": "ISC"
+}

@@ -1,0 +1,178 @@
+/* A4 Printable Invoice Stylesheet */
+@media print {
+  /* Set A4 Page Boundaries */
+  @page {
+    size: A4;
+    margin: 10mm 12mm;
+  }
+
+  /* Reset layout and hide interactive widgets */
+  body {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation, sidebar, action buttons */
+  .sidebar-container,
+  .navbar-container,
+  .btn,
+  .no-print,
+  .theme-toggle-btn {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Watermark Layout */
+  .printable-invoice-container {
+    position: relative;
+    border: 1px solid #1B5E20 !important;
+    padding: 15px;
+    border-radius: 8px;
+    min-height: 260mm; /* Fits A4 precisely */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Watermark using data URI of custom SVGs (leaf and carrot outlines) */
+  .printable-invoice-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 100 100' opacity='0.04' fill='none' stroke='%232E7D32' stroke-width='1.5'><path d='M30,70 Q50,40 70,30 Q60,60 30,70 Z M70,30 Q80,10 90,5 Q75,20 70,30 Z M50,50 L40,60'/><circle cx='40' cy='30' r='12'/><path d='M28,30 C28,15 52,15 52,30'/></svg>");
+    background-repeat: repeat;
+    background-position: center;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Printable Header Table and Borders */
+  .invoice-header-table {
+    width: 100%;
+    border-bottom: 2px solid #2E7D32 !important;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+
+  /* Invoice details tables */
+  .invoice-details-grid {
+    display: table;
+    width: 100%;
+    margin-bottom: 15px;
+  }
+
+  .invoice-details-col {
+    display: table-cell;
+    width: 50%;
+    vertical-align: top;
+    font-size: 10pt;
+    line-height: 1.4;
+  }
+
+  /* Professional A4 Invoice Table */
+  .invoice-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px;
+    z-index: 10;
+    position: relative;
+  }
+
+  .invoice-table th {
+    background-color: #2E7D32 !important;
+    color: #FFFFFF !important;
+    font-weight: bold !important;
+    font-size: 10pt !important;
+    padding: 6px 8px !important;
+    border: 1px solid #1B5E20 !important;
+  }
+
+  .invoice-table td {
+    padding: 6px 8px !important;
+    font-size: 10pt !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #000000 !important;
+  }
+
+  .invoice-table tr:nth-child(even) {
+    background-color: #F8F9FA !important;
+  }
+
+  /* Summary details at bottom */
+  .invoice-summary-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    z-index: 10;
+    position: relative;
+    page-break-inside: avoid;
+  }
+
+  .invoice-summary-left {
+    width: 55%;
+    font-size: 9pt;
+  }
+
+  .invoice-summary-right {
+    width: 40%;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 10pt;
+  }
+
+  .grand-total-row {
+    font-weight: bold;
+    border-top: 1.5px solid #2E7D32;
+    border-bottom: 1.5px solid #2E7D32;
+    padding: 5px 0;
+    font-size: 11pt;
+    color: #1B5E20 !important;
+  }
+
+  /* Footer Section */
+  .invoice-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 30px;
+    border-top: 1px solid #E2E8F0;
+    padding-top: 10px;
+    font-size: 9pt;
+    page-break-inside: avoid;
+  }
+
+  .signature-area {
+    text-align: center;
+    width: 150px;
+    border-top: 1px dashed #000000;
+    padding-top: 5px;
+    margin-top: 40px;
+  }
+
+  /* QR code print layout */
+  .print-qr-code {
+    width: 90px;
+    height: 90px;
+    border: 1px solid #E2E8F0;
+    padding: 4px;
+    background-color: #FFFFFF;
+  }
+}
