@@ -16,6 +16,7 @@ export default function Purchases({ token, API_URL }) {
   const [success, setSuccess] = useState('');
   
   const [view, setView] = useState('add'); // 'add' or 'list'
+  const [editingInvoiceId, setEditingInvoiceId] = useState(null);
 
   // Meta data for the invoice
   const [formData, setFormData] = useState({
@@ -117,6 +118,13 @@ export default function Purchases({ token, API_URL }) {
     setSuccess('');
 
     try {
+      if (editingInvoiceId) {
+        await fetch(`${API_URL}/api/purchases/${editingInvoiceId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+
       const payload = {
         ...formData,
         cart,
@@ -135,12 +143,15 @@ export default function Purchases({ token, API_URL }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to save purchase');
       
-      setSuccess('Market Purchase saved successfully!');
+      setSuccess(editingInvoiceId ? 'Purchase updated successfully!' : 'Market Purchase saved successfully!');
       
       // Reset everything
       setCart([]);
+      setEditingInvoiceId(null);
       setFormData({
         ...formData,
+        supplier_name: '',
+        market_name: '',
         transport_charge: '',
         labour_charge: '',
         other_charge: '',
@@ -181,15 +192,52 @@ export default function Purchases({ token, API_URL }) {
     }
   };
 
+  const handleEditInvoice = (p) => {
+    setFormData({
+      purchase_date: p.purchase_date,
+      supplier_name: p.supplier_name || '',
+      partner_id: p.partner_id || '',
+      market_name: p.market_name || '',
+      transport_charge: p.transport_charge || '',
+      labour_charge: p.labour_charge || '',
+      other_charge: p.other_charges || '',
+      payment_method: p.payment_method || 'Cash',
+      remark: p.remark || ''
+    });
+    setCart(invoiceItems.map(item => ({
+      vegetable_name: item.vegetable_name,
+      quantity: item.quantity,
+      purchase_rate: item.purchase_rate,
+      total_amount: item.total_amount
+    })));
+    setEditingInvoiceId(p.id);
+    setView('add');
+  };
+
+  const handleDeleteInvoice = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this purchase? This will remove all related items and expenses.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/purchases/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete purchase');
+      fetchInitialData();
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting purchase');
+    }
+  };
+
   return (
     <div className="page-container animate-fade">
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Market Purchases</h1>
+          <h1 className="page-title">{editingInvoiceId ? 'Edit Purchase Invoice' : 'Market Purchases'}</h1>
           <p className="page-subtitle">Multi-item purchase entry (No Stock Update)</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => setView('add')} className={`btn ${view === 'add' ? 'btn-primary' : 'btn-secondary'}`}>
+          <button onClick={() => { setView('add'); setEditingInvoiceId(null); setCart([]); }} className={`btn ${view === 'add' ? 'btn-primary' : 'btn-secondary'}`}>
             <Plus size={16} /> New Bill
           </button>
           <button onClick={() => setView('list')} className={`btn ${view === 'list' ? 'btn-primary' : 'btn-secondary'}`}>
@@ -436,6 +484,10 @@ export default function Purchases({ token, API_URL }) {
                               <div style={{ textAlign: 'right' }}>
                                 <div style={{ color: 'var(--text-muted)' }}>Payment Method: <strong>{p.payment_method}</strong></div>
                                 {p.partner_name && <div style={{ color: 'var(--text-muted)' }}>Paid By: <strong>{p.partner_name}</strong></div>}
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                  <button type="button" className="btn btn-secondary" onClick={() => handleEditInvoice(p)}>Edit</button>
+                                  <button type="button" className="btn btn-danger" onClick={() => handleDeleteInvoice(p.id)}>Delete</button>
+                                </div>
                               </div>
                             </div>
                           </td>

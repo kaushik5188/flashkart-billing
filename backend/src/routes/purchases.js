@@ -32,7 +32,7 @@ router.post('/', verifyToken, async (req, res) => {
       ]
     );
 
-    const purchaseInvoiceId = result.lastID;
+    const purchaseInvoiceId = result.insertId;
 
     // 2. Insert items into purchase_items
     for (let item of cart) {
@@ -95,6 +95,27 @@ router.get('/:id/items', verifyToken, async (req, res) => {
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch items' });
+  }
+});
+
+// 4. DELETE a purchase invoice (reverses expenses)
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    await query('BEGIN TRANSACTION');
+    
+    // Reverse Partner Expenses / Expenses
+    await query(`DELETE FROM partner_expenses WHERE remark = ?`, [\`Market Purchase INV-\${req.params.id}\`]);
+    await query(`DELETE FROM expenses WHERE remark = ?`, [\`Market Purchase INV-\${req.params.id}\`]);
+    
+    // Delete items and invoice
+    await query(`DELETE FROM purchase_items WHERE purchase_invoice_id = ?`, [req.params.id]);
+    await query(`DELETE FROM purchase_invoices WHERE id = ?`, [req.params.id]);
+    
+    await query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await query('ROLLBACK');
+    res.status(500).json({ error: 'Failed to delete purchase' });
   }
 });
 
