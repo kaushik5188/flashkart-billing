@@ -8,17 +8,17 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const CATEGORIES = ['Vegetables', 'Fruits', 'Transport', 'Labour', 'Diesel', 'Other'];
+const CATEGORIES = ['Transport', 'Diesel', 'Labour', 'Rent', 'Electricity', 'Packing', 'Other'];
 const METHODS    = ['Cash', 'UPI', 'Bank Transfer', 'Card', 'Cheque', 'Other'];
 
 const CAT_ICONS = {
-  Vegetables: '🥦', Fruits: '🍎', Transport: '🚛',
-  Labour: '👷', Diesel: '⛽', Other: '📦'
+  Transport: '🚛', Diesel: '⛽', Labour: '👷',
+  Rent: '🏠', Electricity: '⚡', Packing: '📦', Other: '🧾'
 };
 
 const CAT_COLORS = {
-  Vegetables: '#2E7D32', Fruits: '#E65100', Transport: '#1565C0',
-  Labour: '#6A1B9A', Diesel: '#BF360C', Other: '#455A64'
+  Transport: '#1565C0', Diesel: '#BF360C', Labour: '#6A1B9A',
+  Rent: '#E65100', Electricity: '#F9A825', Packing: '#2E7D32', Other: '#455A64'
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ export default function Expenses({ token, API_URL, user }) {
   const [showForm, setShowForm] = useState(false);
   const [editExpense, setEditExpense] = useState(null);
   const [formData, setFormData] = useState({
-    partner_id: '', expense_date: today(), amount: '', category: 'Vegetables',
+    partner_id: '', expense_date: today(), amount: '', category: 'Transport',
     market_name: '', vendor_name: '', payment_method: 'Cash', remark: '', bill_photo: ''
   });
   const [formError, setFormError]   = useState('');

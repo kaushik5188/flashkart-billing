@@ -13,7 +13,9 @@ import {
   BookOpen,
   UserCog,
   Wallet,
-  FileText
+  FileText,
+  ShoppingCart,
+  Truck
 } from 'lucide-react';
 
 export default function Sidebar({ currentView, setView, user, logout, theme, toggleTheme }) {
@@ -21,13 +23,17 @@ export default function Sidebar({ currentView, setView, user, logout, theme, tog
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', name: 'New Bill', icon: Receipt },
     { id: 'bills', name: 'All Bills', icon: FileText },
-    { id: 'ledger', name: 'Ledger', icon: BookOpen },
-    { id: 'expenses', name: 'Partner Expenses', icon: Wallet },
-    { id: 'customers', name: 'Customers', icon: Users },
+    { id: 'purchases', name: 'Purchases', icon: ShoppingCart },
     { id: 'inventory', name: 'Inventory', icon: Boxes },
+    { id: 'customers', name: 'Customers', icon: Users },
+    { id: 'suppliers', name: 'Suppliers', icon: Truck },
+    { id: 'expenses', name: 'Expenses', icon: Wallet },
     { id: 'reports', name: 'Reports', icon: BarChart3 },
-    { id: 'settings', name: 'Settings', icon: SettingsIcon },
-    ...(user?.role === 'admin' ? [{ id: 'users', name: 'Users', icon: UserCog }] : [])
+    ...(user?.role === 'admin' ? [
+      { id: 'ledger', name: 'Ledger', icon: BookOpen },
+      { id: 'settings', name: 'Settings', icon: SettingsIcon },
+      { id: 'users', name: 'Users', icon: UserCog }
+    ] : [])
   ];
 
   return (

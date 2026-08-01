@@ -13,32 +13,49 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const todaySales = await query('SELECT SUM(grand_total) as total FROM invoices WHERE invoice_date = ?', [todayStr]);
     const salesToday = todaySales[0].total || 0;
 
-    // 2. Monthly Sales
-    const monthlySales = await query('SELECT SUM(grand_total) as total FROM invoices WHERE invoice_date LIKE ?', [currentMonthStr]);
-    const salesThisMonth = monthlySales[0].total || 0;
+    // 2. Today's Purchases
+    const todayPurchases = await query('SELECT SUM(grand_total) as total FROM purchases WHERE purchase_date = ?', [todayStr]);
+    const purchasesToday = todayPurchases[0].total || 0;
 
-    // 3. Total Customers
+    // 3. Today's Expenses
+    const todayExp = await query('SELECT SUM(amount) as total FROM expenses WHERE date = ?', [todayStr]);
+    const expensesToday = todayExp[0].total || 0;
+
+    // 4. Today's Profit Calculation (Gross Margin from Sales - Expenses)
+    const todayGrossMargin = await query(`
+      SELECT SUM((ii.rate - ii.purchase_rate) * ii.quantity) as gross_profit
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      WHERE i.invoice_date = ?
+    `, [todayStr]);
+    const profitToday = (todayGrossMargin[0].gross_profit || 0) - expensesToday;
+
+    // 5. Current Stock Value
+    const stockValQuery = await query('SELECT SUM(stock_quantity * average_purchase_rate) as value FROM products WHERE stock_quantity > 0');
+    const stockValue = stockValQuery[0].value || 0;
+
+    // 6. Total Customers
     const totalCust = await query('SELECT COUNT(*) as count FROM customers');
     const custCount = totalCust[0].count || 0;
 
-    // 4. Pending Payments (unpaid outstanding customer balances)
+    // 7. Pending Payments (unpaid outstanding customer balances)
     const pendingPay = await query('SELECT SUM(outstanding_balance) as total FROM customers WHERE outstanding_balance > 0');
     const outstandingTotal = pendingPay[0].total || 0;
 
-    // 5. Today's Bills count
+    // 8. Today's Bills count
     const todayBills = await query('SELECT COUNT(*) as count FROM invoices WHERE invoice_date = ?', [todayStr]);
     const billsToday = todayBills[0].count || 0;
 
-    // 6. Total Bills count
+    // 9. Total Bills count
     const totalBills = await query('SELECT COUNT(*) as count FROM invoices');
     const billsCount = totalBills[0].count || 0;
 
-    // 7. Recent active customers
+    // 10. Recent active customers
     const recentCustomers = await query(
       'SELECT id, name, mobile, place, last_purchase_date, outstanding_balance FROM customers ORDER BY last_purchase_date DESC LIMIT 5'
     );
 
-    // 8. Best selling vegetables (Top 5)
+    // 11. Best selling vegetables (Top 5)
     const bestSellers = await query(`
       SELECT product_name, SUM(quantity) as total_qty, SUM(amount) as total_revenue
       FROM invoice_items
@@ -47,38 +64,23 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
       LIMIT 5
     `);
 
-    // 9. Low stock alerts notification count
+    // 12. Low stock alerts notification count
     const lowStockResult = await query('SELECT COUNT(*) as count FROM products WHERE stock_quantity <= min_stock_alert');
     const lowStockCount = lowStockResult[0].count || 0;
 
-    // 10. Today's Collections (credits received today — ledger + customer_payments)
-    const todayCollLedger = await query(
-      "SELECT SUM(amount) as total FROM ledger_entries WHERE type='CREDIT' AND entry_date=? AND is_deleted=0",
-      [todayStr]
-    );
-    const todayCollPayments = await query(
-      'SELECT SUM(amount) as total FROM customer_payments WHERE payment_date=?',
-      [todayStr]
-    );
-    const todayCollections = (todayCollLedger[0].total || 0) + (todayCollPayments[0].total || 0);
-
-    // 11. Total transactions (ledger entries + billing invoices + customer_payments)
-    const totalLedger   = await query('SELECT COUNT(*) as count FROM ledger_entries WHERE is_deleted=0');
-    const totalPayments = await query('SELECT COUNT(*) as count FROM customer_payments');
-    const totalTransactions = (totalLedger[0].count || 0) + (totalPayments[0].count || 0) + (billsCount || 0);
-
     res.json({
       salesToday,
-      salesThisMonth,
+      purchasesToday,
+      expensesToday,
+      profitToday,
+      stockValue,
       custCount,
       outstandingTotal,
       billsToday,
       billsCount,
       recentCustomers,
       bestSellers,
-      lowStockCount,
-      todayCollections,
-      totalTransactions
+      lowStockCount
     });
   } catch (err) {
     console.error('Dashboard stats fetch failed:', err);
@@ -86,52 +88,57 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
   }
 });
 
-// GET sales and profit graph coords (for charting)
+// GET sales, purchases, expenses and profit graph coords (for charting)
 router.get('/charts', verifyToken, async (req, res) => {
   const { range } = req.query; // 'week', 'month', 'year'
   try {
-    let sql = '';
-    let params = [];
+    const isYear = range === 'year';
+    const limitClause = isYear ? '' : 'LIMIT 30';
     
-    // Group invoices to render data points
-    if (range === 'year') {
-      // Monthly aggregate for current year
-      const yearStr = new Date().getFullYear().toString() + '%';
-      sql = `
-        SELECT SUBSTR(i.invoice_date, 1, 7) as label, 
-               SUM(i.grand_total) as sales,
-               SUM(ii.amount - (p.purchase_price * ii.quantity)) as profit
-        FROM invoices i
-        JOIN invoice_items ii ON i.id = ii.invoice_id
-        JOIN products p ON ii.product_id = p.id
-        WHERE i.invoice_date LIKE ?
-        GROUP BY label
-        ORDER BY label ASC
-      `;
-      params = [yearStr];
-    } else {
-      // Default to last 30 days
-      sql = `
-        SELECT i.invoice_date as label,
-               SUM(i.grand_total) as sales,
-               SUM(ii.amount - (p.purchase_price * ii.quantity)) as profit
-        FROM invoices i
-        JOIN invoice_items ii ON i.id = ii.invoice_id
-        JOIN products p ON ii.product_id = p.id
-        GROUP BY label
-        ORDER BY label DESC
-        LIMIT 30
-      `;
-    }
+    // 1. Sales and Gross Profit
+    const salesSql = isYear ? 
+      `SELECT SUBSTR(i.invoice_date, 1, 7) as label, SUM(i.grand_total) as sales, SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as profit FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id WHERE i.invoice_date LIKE ? GROUP BY label ORDER BY label DESC` :
+      `SELECT i.invoice_date as label, SUM(i.grand_total) as sales, SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as profit FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id GROUP BY label ORDER BY label DESC ${limitClause}`;
+    
+    const params = isYear ? [new Date().getFullYear().toString() + '%'] : [];
+    const salesData = await query(salesSql, params);
 
-    const data = await query(sql, params);
-    
-    // If we limit 30 labels, we return them in ascending order for charting
-    if (range !== 'year') {
-      data.reverse();
-    }
-    
-    res.json(data);
+    // 2. Purchases
+    const purchasesSql = isYear ?
+      `SELECT SUBSTR(purchase_date, 1, 7) as label, SUM(grand_total) as purchases FROM purchases WHERE purchase_date LIKE ? GROUP BY label ORDER BY label DESC` :
+      `SELECT purchase_date as label, SUM(grand_total) as purchases FROM purchases GROUP BY label ORDER BY label DESC ${limitClause}`;
+    const purchasesData = await query(purchasesSql, params);
+
+    // 3. Expenses
+    const expSql = isYear ?
+      `SELECT SUBSTR(date, 1, 7) as label, SUM(amount) as expenses FROM expenses WHERE date LIKE ? GROUP BY label ORDER BY label DESC` :
+      `SELECT date as label, SUM(amount) as expenses FROM expenses GROUP BY label ORDER BY label DESC ${limitClause}`;
+    const expData = await query(expSql, params);
+
+    // Merge in Node
+    const merged = {};
+    const addData = (data, key1, key2) => {
+      data.forEach(row => {
+        if (!merged[row.label]) merged[row.label] = { label: row.label, sales: 0, profit: 0, purchases: 0, expenses: 0 };
+        if (key1) merged[row.label][key1] = row[key1] || 0;
+        if (key2) merged[row.label][key2] = row[key2] || 0;
+      });
+    };
+
+    addData(salesData, 'sales', 'profit');
+    addData(purchasesData, 'purchases', null);
+    addData(expData, 'expenses', null);
+
+    // Sort ascending for chart (chronological)
+    let finalData = Object.values(merged).sort((a, b) => a.label.localeCompare(b.label));
+
+    // Calculate true net profit = gross profit - expenses
+    finalData = finalData.map(d => ({
+      ...d,
+      profit: d.profit - d.expenses
+    }));
+
+    res.json(finalData);
   } catch (err) {
     console.error('Chart points generator failed:', err);
     res.status(500).json({ error: 'Error generating chart data.' });
@@ -145,11 +152,10 @@ router.get('/sales-profit-report', verifyToken, async (req, res) => {
     let sql = `
       SELECT i.id, i.bill_number, i.invoice_date, i.grand_total, i.paid_amount, i.remaining_amount,
              c.name as customer_name,
-             SUM(ii.amount - (p.purchase_price * ii.quantity)) as net_profit
+             SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as net_profit
       FROM invoices i
       JOIN customers c ON i.customer_id = c.id
       JOIN invoice_items ii ON i.id = ii.invoice_id
-      JOIN products p ON ii.product_id = p.id
       WHERE 1=1
     `;
     let params = [];
@@ -180,7 +186,7 @@ router.get('/products-sales-report', verifyToken, async (req, res) => {
       SELECT ii.product_id, ii.product_name, p.category, p.unit,
              SUM(ii.quantity) as total_qty,
              SUM(ii.amount) as total_revenue,
-             SUM(ii.amount - (p.purchase_price * ii.quantity)) as total_profit
+             SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as total_profit
       FROM invoice_items ii
       JOIN products p ON ii.product_id = p.id
       JOIN invoices i ON ii.invoice_id = i.id

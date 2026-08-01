@@ -152,11 +152,19 @@ router.post('/', verifyToken, async (req, res) => {
       const amt = parseFloat(item.amount);
       const pid = parseInt(item.product_id) || 0;
 
+      let avgPurchaseRate = 0;
+      if (pid > 0) {
+        const prodResult = await query('SELECT average_purchase_rate FROM products WHERE id = ?', [pid]);
+        if (prodResult.length > 0) {
+          avgPurchaseRate = parseFloat(prodResult[0].average_purchase_rate) || 0;
+        }
+      }
+
       // Save item (product_id=0 means free-text/custom item)
       await query(
-        `INSERT INTO invoice_items (invoice_id, product_id, product_name, quantity, rate, amount, remarks) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [invoiceId, pid, item.product_name, q, r, amt, item.remarks || '']
+        `INSERT INTO invoice_items (invoice_id, product_id, product_name, quantity, rate, purchase_rate, amount, remarks) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [invoiceId, pid, item.product_name, q, r, avgPurchaseRate, amt, item.remarks || '']
       );
 
       // Only deplete stock and log if this is a catalogued product (id > 0)

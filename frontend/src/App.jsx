@@ -13,6 +13,8 @@ import Ledger from './pages/Ledger';
 import UsersPage from './pages/Users';
 import Expenses from './pages/Expenses';
 import Bills from './pages/Bills';
+import Purchases from './pages/Purchases';
+import Suppliers from './pages/Suppliers';
 
 const API_URL = 'http://localhost:5000';
 
@@ -163,6 +165,22 @@ export default function App() {
 
         {currentView === 'expenses' && (
           <Expenses
+            token={token}
+            API_URL={API_URL}
+            user={user}
+          />
+        )}
+
+        {currentView === 'purchases' && (
+          <Purchases
+            token={token}
+            API_URL={API_URL}
+            user={user}
+          />
+        )}
+
+        {currentView === 'suppliers' && (
+          <Suppliers
             token={token}
             API_URL={API_URL}
             user={user}

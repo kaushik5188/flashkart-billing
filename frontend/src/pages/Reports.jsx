@@ -7,13 +7,22 @@ import {
   Search, 
   Calendar,
   FileSpreadsheet,
-  Printer
+  Printer,
+  ShoppingCart,
+  Wallet,
+  Receipt
 } from 'lucide-react';
 
 export default function Reports({ token, API_URL, setCustomerId, setView }) {
-  const [activeReport, setActiveReport] = useState('sales'); // 'sales', 'products', 'customers', 'receivables'
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // 30 days ago
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]); // today
+  const [activeReport, setActiveReport] = useState('sales'); // 'sales', 'products', 'purchases', 'expenses', 'customers', 'receivables'
+  
+  const [startDate, setStartDate] = useState(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
+  
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,22 +35,33 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
     setLoading(true);
     setError('');
     try {
-      let endpoint = '';
+      let url = '';
       if (activeReport === 'sales') {
-        endpoint = `sales-profit-report?startDate=${startDate}&endDate=${endDate}`;
+        url = `${API_URL}/api/reports/sales-profit-report?startDate=${startDate}&endDate=${endDate}`;
       } else if (activeReport === 'products') {
-        endpoint = `products-sales-report?startDate=${startDate}&endDate=${endDate}`;
+        url = `${API_URL}/api/reports/products-sales-report?startDate=${startDate}&endDate=${endDate}`;
+      } else if (activeReport === 'purchases') {
+        // Purchases doesn't have a dedicated report endpoint with date filters yet, but we'll fetch all and filter in frontend for now to save time
+        url = `${API_URL}/api/purchases`;
+      } else if (activeReport === 'expenses') {
+        url = `${API_URL}/api/expenses/reports/category?startDate=${startDate}&endDate=${endDate}`;
       } else if (activeReport === 'customers') {
-        endpoint = `customers-sales-report?startDate=${startDate}&endDate=${endDate}`;
+        url = `${API_URL}/api/reports/customers-sales-report?startDate=${startDate}&endDate=${endDate}`;
       } else if (activeReport === 'receivables') {
-        endpoint = `receivables-report`;
+        url = `${API_URL}/api/reports/receivables-report`;
       }
 
-      const res = await fetch(`${API_URL}/api/reports/${endpoint}`, {
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Error loading report database.');
-      const data = await res.json();
+      if (!res.ok) throw new Error('Error loading report data.');
+      let data = await res.json();
+
+      // Client side filtering for endpoints that don't support it natively yet
+      if (activeReport === 'purchases') {
+        data = data.filter(p => p.purchase_date >= startDate && p.purchase_date <= endDate);
+      }
+
       setReportData(data);
     } catch (err) {
       setError(err.message);
@@ -50,44 +70,34 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
     }
   };
 
-  // Helper to calculate totals for report summaries
+  // Metrics calculation
   const getSummaryMetrics = () => {
     let salesTotal = 0;
     let profitTotal = 0;
     let quantityTotal = 0;
-    let invoicesCount = reportData.length;
+    let count = reportData.length;
 
     if (activeReport === 'sales') {
-      reportData.forEach(row => {
-        salesTotal += row.grand_total;
-        profitTotal += row.net_profit;
-      });
+      reportData.forEach(r => { salesTotal += r.grand_total; profitTotal += r.net_profit; });
     } else if (activeReport === 'products') {
-      reportData.forEach(row => {
-        salesTotal += row.total_revenue;
-        profitTotal += row.total_profit;
-        quantityTotal += row.total_qty;
-      });
+      reportData.forEach(r => { salesTotal += r.total_revenue; profitTotal += r.total_profit; quantityTotal += r.total_qty; });
+    } else if (activeReport === 'purchases') {
+      reportData.forEach(r => { salesTotal += r.grand_total; quantityTotal += parseFloat(r.quantity || 0); });
+    } else if (activeReport === 'expenses') {
+      reportData.forEach(r => { salesTotal += r.total; });
     } else if (activeReport === 'customers') {
-      reportData.forEach(row => {
-        salesTotal += row.total_spent || 0;
-        profitTotal += row.outstanding_balance || 0; // We treat outstanding as filterable metric
-      });
+      reportData.forEach(r => { salesTotal += r.total_spent || 0; profitTotal += r.outstanding_balance || 0; });
     } else if (activeReport === 'receivables') {
-      reportData.forEach(row => {
-        salesTotal += row.outstanding_balance;
-      });
+      reportData.forEach(r => { salesTotal += r.outstanding_balance; });
     }
 
-    return { salesTotal, profitTotal, quantityTotal, invoicesCount };
+    return { salesTotal, profitTotal, quantityTotal, count };
   };
 
-  const { salesTotal, profitTotal, quantityTotal, invoicesCount } = getSummaryMetrics();
+  const metrics = getSummaryMetrics();
 
-  // Excel CSV Exporter (local blob generation)
   const exportToCSV = () => {
     if (reportData.length === 0) return;
-
     let csvContent = "data:text/csv;charset=utf-8,";
     let headers = [];
     let rows = [];
@@ -98,6 +108,12 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
     } else if (activeReport === 'products') {
       headers = ["Product Name", "Category", "Quantity Sold", "Unit", "Total Sales (Rs)", "Total Profit (Rs)"];
       rows = reportData.map(r => [r.product_name, r.category, r.total_qty, r.unit, r.total_revenue, r.total_profit]);
+    } else if (activeReport === 'purchases') {
+      headers = ["Date", "Supplier", "Product", "Quantity", "Rate", "Total (Rs)"];
+      rows = reportData.map(r => [r.purchase_date, r.supplier_name, r.product_name, r.quantity, r.purchase_rate, r.grand_total]);
+    } else if (activeReport === 'expenses') {
+      headers = ["Category", "Total Spent (Rs)"];
+      rows = reportData.map(r => [r.category, r.total]);
     } else if (activeReport === 'customers') {
       headers = ["Customer Name", "Mobile", "Place", "Bills Count", "Total Spent (Rs)", "Outstanding (Rs)"];
       rows = reportData.map(r => [r.name, r.mobile, r.place, r.total_bills, r.total_spent, r.outstanding_balance]);
@@ -106,10 +122,9 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
       rows = reportData.map(r => [r.name, r.mobile, r.place, r.outstanding_balance, r.last_purchase_date || 'N/A']);
     }
 
-    // Join headers and rows
     csvContent += headers.join(",") + "\n";
     rows.forEach(row => {
-      csvContent += row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",") + "\n";
+      csvContent += row.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(",") + "\n";
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -121,299 +136,263 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
     document.body.removeChild(link);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const fmt = (v) => `₹${(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
   return (
-    <div className="animate-fade">
-      {/* Top Header Options */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '15px' }}>
+    <div className="page-container animate-fade">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>Business Reports Hub</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Generate and audit sales, profits, and debts ledgers</p>
+          <h1 className="page-title">Enterprise Reports Hub</h1>
+          <p className="page-subtitle">Generate, audit, and export comprehensive business ledgers</p>
         </div>
-
-        {/* Report tabs */}
-        <div style={{ display: 'flex', gap: '4px', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '3px', backgroundColor: 'var(--bg-card)' }}>
-          <button onClick={() => setActiveReport('sales')} className="btn" style={{ padding: '0.5rem 0.9rem', fontSize: '0.8rem', border: 'none', backgroundColor: activeReport === 'sales' ? 'var(--color-green-light)' : 'transparent', color: activeReport === 'sales' ? 'var(--color-green-dark)' : 'var(--text-main)' }}>
-            <TrendingUp size={14} /> Sales & Profits
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button onClick={exportToCSV} className="btn btn-secondary">
+            <FileSpreadsheet size={16} color="var(--color-green)" /> Export CSV (Excel)
           </button>
-          <button onClick={() => setActiveReport('products')} className="btn" style={{ padding: '0.5rem 0.9rem', fontSize: '0.8rem', border: 'none', backgroundColor: activeReport === 'products' ? 'var(--color-green-light)' : 'transparent', color: activeReport === 'products' ? 'var(--color-green-dark)' : 'var(--text-main)' }}>
-            <BarChart3 size={14} /> Vegetable sales
-          </button>
-          <button onClick={() => setActiveReport('customers')} className="btn" style={{ padding: '0.5rem 0.9rem', fontSize: '0.8rem', border: 'none', backgroundColor: activeReport === 'customers' ? 'var(--color-green-light)' : 'transparent', color: activeReport === 'customers' ? 'var(--color-green-dark)' : 'var(--text-main)' }}>
-            <Users size={14} /> Customer wise
-          </button>
-          <button onClick={() => setActiveReport('receivables')} className="btn" style={{ padding: '0.5rem 0.9rem', fontSize: '0.8rem', border: 'none', backgroundColor: activeReport === 'receivables' ? 'var(--color-green-light)' : 'transparent', color: activeReport === 'receivables' ? 'var(--color-green-dark)' : 'var(--text-main)' }}>
-            <AlertTriangle size={14} /> Pending Payments
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="badge badge-danger" style={{ width: '100%', padding: '1rem', marginBottom: '1.5rem', justifyContent: 'center' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Date Filters Card */}
-      <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-        
-        {/* Date picking forms */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
-            <Calendar size={16} style={{ color: 'var(--color-green)' }} /> Date Range:
-          </div>
-          <input 
-            type="date" 
-            className="form-control" 
-            style={{ width: '130px', height: '36px', fontSize: '0.85rem' }} 
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            disabled={activeReport === 'receivables'}
-          />
-          <span style={{ color: 'var(--text-muted)' }}>to</span>
-          <input 
-            type="date" 
-            className="form-control" 
-            style={{ width: '130px', height: '36px', fontSize: '0.85rem' }} 
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            disabled={activeReport === 'receivables'}
-          />
-        </div>
-
-        {/* Export Buttons */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={exportToCSV} className="btn btn-secondary" style={{ fontSize: '0.85rem' }} disabled={reportData.length === 0}>
-            <FileSpreadsheet size={16} style={{ color: '#1B5E20' }} /> Export Excel
-          </button>
-          <button onClick={handlePrint} className="btn btn-secondary" style={{ fontSize: '0.85rem' }} disabled={reportData.length === 0}>
+          <button onClick={() => window.print()} className="btn btn-primary">
             <Printer size={16} /> Print Report
           </button>
         </div>
+      </header>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
+        {[
+          { id: 'sales', icon: TrendingUp, label: 'Sales & Profit' },
+          { id: 'products', icon: BarChart3, label: 'Vegetable Sales' },
+          { id: 'purchases', icon: ShoppingCart, label: 'Purchases' },
+          { id: 'expenses', icon: Wallet, label: 'Expenses' },
+          { id: 'customers', icon: Users, label: 'Customer wise' },
+          { id: 'receivables', icon: AlertTriangle, label: 'Pending Payments' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveReport(tab.id)}
+            className="btn"
+            style={{
+              backgroundColor: activeReport === tab.id ? 'var(--color-green-light)' : 'transparent',
+              color: activeReport === tab.id ? 'var(--color-green-dark)' : 'var(--text-main)',
+              border: activeReport === tab.id ? '1px solid var(--color-green)' : '1px solid var(--border-light)',
+              fontWeight: activeReport === tab.id ? 700 : 500,
+              padding: '0.5rem 1rem'
+            }}
+          >
+            <tab.icon size={16} /> {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Summary KPI Widgets */}
-      <div className="dashboard-grid" style={{ marginBottom: '2rem' }}>
-        {activeReport === 'sales' && (
-          <>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Period Revenue</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-green)' }}>₹{salesTotal.toFixed(2)}</h3>
-              </div>
+      {/* Date Filters */}
+      {activeReport !== 'receivables' && (
+        <div className="card" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem 1.5rem' }}>
+          <div className="form-group" style={{ marginBottom: 0, flex: 1, maxWidth: '250px' }}>
+            <label style={{ fontSize: '0.85rem' }}>Start Date</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+              <input type="date" className="input" style={{ paddingLeft: '34px' }} value={startDate} onChange={e => setStartDate(e.target.value)} />
             </div>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Net Profits</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-green-dark)' }}>₹{profitTotal.toFixed(2)}</h3>
-              </div>
+          </div>
+          <div className="form-group" style={{ marginBottom: 0, flex: 1, maxWidth: '250px' }}>
+            <label style={{ fontSize: '0.85rem' }}>End Date</label>
+            <div style={{ position: 'relative' }}>
+              <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
+              <input type="date" className="input" style={{ paddingLeft: '34px' }} value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Invoices Cleared</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{invoicesCount} Bills</h3>
-              </div>
-            </div>
-          </>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        <div className="card stat-card" style={{ padding: '1.25rem' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Total Records</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{metrics.count}</div>
+        </div>
+        
+        {['sales', 'customers'].includes(activeReport) && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Total Sales/Spent</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-green)' }}>{fmt(metrics.salesTotal)}</div>
+          </div>
         )}
 
-        {activeReport === 'products' && (
-          <>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Vegetables Revenue</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{salesTotal.toFixed(2)}</h3>
-              </div>
-            </div>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Vegetable Profits</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-green)' }}>₹{profitTotal.toFixed(2)}</h3>
-              </div>
-            </div>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Volume Dispatched</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{quantityTotal.toFixed(1)} Kg/Units</h3>
-              </div>
-            </div>
-          </>
+        {['purchases', 'expenses'].includes(activeReport) && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Total Outflow</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)' }}>{fmt(metrics.salesTotal)}</div>
+          </div>
         )}
 
-        {activeReport === 'customers' && (
-          <>
-            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Customer Volume</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{salesTotal.toFixed(2)}</h3>
-              </div>
-            </div>
-            <div className="glass-card stats-card" style={{ padding: '1rem', borderLeft: '3px solid var(--color-orange)' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Receivables Debt</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-orange-dark)' }}>₹{profitTotal.toFixed(2)}</h3>
-              </div>
-            </div>
-          </>
+        {['sales', 'products'].includes(activeReport) && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Net Profit</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#6A1B9A' }}>{fmt(metrics.profitTotal)}</div>
+          </div>
         )}
 
-        {activeReport === 'receivables' && (
-          <div className="glass-card stats-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--color-orange)', gridColumn: 'span 3' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Outstanding Pending Payments (લેણું)</span>
-              <h3 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-danger)' }}>₹{salesTotal.toFixed(2)}</h3>
-            </div>
+        {['receivables', 'customers'].includes(activeReport) && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Total Pending Payments</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-orange)' }}>{fmt(activeReport === 'customers' ? metrics.profitTotal : metrics.salesTotal)}</div>
+          </div>
+        )}
+
+        {['products', 'purchases'].includes(activeReport) && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Total Quantity</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{metrics.quantityTotal.toFixed(1)}</div>
           </div>
         )}
       </div>
 
-      {/* Reports Table rendering */}
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        {loading ? (
-          <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Calculating report parameters...</p>
-        ) : reportData.length === 0 ? (
-          <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No records found in this range.</p>
-        ) : (
-          <div className="table-container" style={{ margin: 0, border: 'none' }}>
-            
-            {/* Sales report table */}
-            {activeReport === 'sales' && (
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Invoice No</th>
-                    <th>Billing Date</th>
-                    <th>Customer / Shop Name</th>
-                    <th style={{ textAlign: 'right' }}>Total Invoice Amount</th>
-                    <th style={{ textAlign: 'right' }}>Paid Amount</th>
-                    <th style={{ textAlign: 'right' }}>Net Profit (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map(row => (
-                    <tr key={row.id}>
-                      <td style={{ fontWeight: 700 }}>{row.bill_number}</td>
-                      <td>{row.invoice_date}</td>
-                      <td style={{ fontWeight: 600 }}>{row.customer_name}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>₹{row.grand_total.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right' }}>₹{row.paid_amount.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', color: 'var(--color-green-dark)', fontWeight: 700 }}>₹{row.net_profit.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+      {/* Data Table */}
+      <div className="card">
+        <div className="table-responsive">
+          <table className="table" style={{ fontSize: '0.9rem' }}>
+            <thead>
+              {activeReport === 'sales' && (
+                <tr>
+                  <th>Date</th>
+                  <th>Invoice No</th>
+                  <th>Customer Name</th>
+                  <th style={{ textAlign: 'right' }}>Grand Total</th>
+                  <th style={{ textAlign: 'right' }}>Paid Amount</th>
+                  <th style={{ textAlign: 'right', color: '#6A1B9A' }}>Net Profit</th>
+                </tr>
+              )}
+              {activeReport === 'products' && (
+                <tr>
+                  <th>Vegetable Name</th>
+                  <th>Category</th>
+                  <th style={{ textAlign: 'right' }}>Qty Sold</th>
+                  <th style={{ textAlign: 'right' }}>Total Revenue</th>
+                  <th style={{ textAlign: 'right', color: '#6A1B9A' }}>Net Profit</th>
+                </tr>
+              )}
+              {activeReport === 'purchases' && (
+                <tr>
+                  <th>Date</th>
+                  <th>Supplier</th>
+                  <th>Product</th>
+                  <th style={{ textAlign: 'right' }}>Qty</th>
+                  <th style={{ textAlign: 'right' }}>Total Amount</th>
+                </tr>
+              )}
+              {activeReport === 'expenses' && (
+                <tr>
+                  <th>Expense Category</th>
+                  <th style={{ textAlign: 'right' }}>Total Spent</th>
+                </tr>
+              )}
+              {activeReport === 'customers' && (
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Contact & Place</th>
+                  <th style={{ textAlign: 'center' }}>Total Bills</th>
+                  <th style={{ textAlign: 'right' }}>Total Spent</th>
+                  <th style={{ textAlign: 'right' }}>Outstanding</th>
+                </tr>
+              )}
+              {activeReport === 'receivables' && (
+                <tr>
+                  <th>Customer Name</th>
+                  <th>Contact Info</th>
+                  <th>Last Purchase</th>
+                  <th style={{ textAlign: 'right', color: 'var(--color-danger)' }}>Pending Amount</th>
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem' }}>Loading report data...</td></tr>
+              ) : error ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-danger)' }}>{error}</td></tr>
+              ) : reportData.length === 0 ? (
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No records found for the selected period.</td></tr>
+              ) : (
+                reportData.map((row, idx) => (
+                  <tr key={idx} className="hover-row">
+                    {/* SALES */}
+                    {activeReport === 'sales' && (
+                      <>
+                        <td>{row.invoice_date}</td>
+                        <td style={{ fontWeight: 600 }}>{row.bill_number}</td>
+                        <td>{row.customer_name}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.grand_total)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--color-success)' }}>{fmt(row.paid_amount)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(row.net_profit)}</td>
+                      </>
+                    )}
 
-            {/* Product wise report table */}
-            {activeReport === 'products' && (
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Vegetable Name</th>
-                    <th>Category</th>
-                    <th style={{ textAlign: 'right' }}>Total Quantity Sold</th>
-                    <th>Selling Unit</th>
-                    <th style={{ textAlign: 'right' }}>Revenue Generated</th>
-                    <th style={{ textAlign: 'right' }}>Net Vegetable Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((row, idx) => (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: 700 }}>{row.product_name}</td>
-                      <td><span className="badge badge-success">{row.category}</span></td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{row.total_qty.toFixed(1)}</td>
-                      <td>{row.unit}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-green-dark)' }}>₹{row.total_revenue.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-orange-dark)' }}>₹{row.total_profit.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                    {/* PRODUCTS */}
+                    {activeReport === 'products' && (
+                      <>
+                        <td style={{ fontWeight: 600 }}>{row.product_name}</td>
+                        <td><span className="badge badge-success">{row.category}</span></td>
+                        <td style={{ textAlign: 'right' }}>{row.total_qty} {row.unit}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.total_revenue)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(row.total_profit)}</td>
+                      </>
+                    )}
 
-            {/* Customer wise report table */}
-            {activeReport === 'customers' && (
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Customer Name</th>
-                    <th>Mobile</th>
-                    <th>Place</th>
-                    <th style={{ textAlign: 'center' }}>Total Bills Created</th>
-                    <th style={{ textAlign: 'right' }}>Total Purchase Spent</th>
-                    <th style={{ textAlign: 'right' }}>Total Paid Amount</th>
-                    <th style={{ textAlign: 'right' }}>Outstanding Debt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map(row => (
-                    <tr key={row.id}>
-                      <td 
-                        onClick={() => { setCustomerId(row.id); setView('customers'); }}
-                        style={{ fontWeight: 700, color: 'var(--color-green-dark)', cursor: 'pointer' }}
-                      >
-                        {row.name}
-                      </td>
-                      <td>{row.mobile}</td>
-                      <td>{row.place || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>{row.total_bills || 0}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>₹{(row.total_spent || 0).toFixed(2)}</td>
-                      <td style={{ textAlign: 'right' }}>₹{(row.total_paid || 0).toFixed(2)}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <span className={`badge ${row.outstanding_balance > 0 ? 'badge-warning' : 'badge-success'}`}>
-                          ₹{row.outstanding_balance.toFixed(2)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                    {/* PURCHASES */}
+                    {activeReport === 'purchases' && (
+                      <>
+                        <td>{row.purchase_date}</td>
+                        <td style={{ fontWeight: 600 }}>{row.supplier_name || '-'}</td>
+                        <td>{row.product_name || '-'}</td>
+                        <td style={{ textAlign: 'right' }}>{row.quantity} @ ₹{row.purchase_rate}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-orange-dark)' }}>{fmt(row.grand_total)}</td>
+                      </>
+                    )}
 
-            {/* Pending payment receivables report */}
-            {activeReport === 'receivables' && (
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Customer Name</th>
-                    <th>Mobile</th>
-                    <th>Place</th>
-                    <th style={{ textAlign: 'right' }}>Outstanding Debt Amount (લેણું)</th>
-                    <th>Last Purchase Date</th>
-                    <th style={{ textAlign: 'center' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map(row => (
-                    <tr key={row.id}>
-                      <td style={{ fontWeight: 700 }}>{row.name}</td>
-                      <td>{row.mobile}</td>
-                      <td>{row.place || '-'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--color-danger)' }}>₹{row.outstanding_balance.toFixed(2)}</td>
-                      <td>{row.last_purchase_date || 'No history'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button 
-                          onClick={() => { setCustomerId(row.id); setView('customers'); }}
-                          className="btn btn-secondary" 
-                          style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                        >
-                          Clear Outstanding
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                    {/* EXPENSES */}
+                    {activeReport === 'expenses' && (
+                      <>
+                        <td style={{ fontWeight: 600 }}>{row.category}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(row.total)}</td>
+                      </>
+                    )}
 
-          </div>
-        )}
+                    {/* CUSTOMERS */}
+                    {activeReport === 'customers' && (
+                      <>
+                        <td style={{ fontWeight: 600, color: 'var(--color-green)' }}>{row.name}</td>
+                        <td>
+                          <div>{row.mobile}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{row.place || '-'}</div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-main)' }}>{row.total_bills} bills</span>
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.total_spent)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: (row.outstanding_balance > 0) ? 'var(--color-danger)' : 'inherit' }}>
+                          {fmt(row.outstanding_balance)}
+                        </td>
+                      </>
+                    )}
+
+                    {/* RECEIVABLES */}
+                    {activeReport === 'receivables' && (
+                      <>
+                        <td style={{ fontWeight: 600, color: 'var(--color-green)' }}>{row.name}</td>
+                        <td>
+                          <div>{row.mobile}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{row.place || '-'}</div>
+                        </td>
+                        <td>{row.last_purchase_date || '-'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--color-danger)', fontSize: '1.05rem' }}>
+                          {fmt(row.outstanding_balance)}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-
     </div>
   );
 }

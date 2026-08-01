@@ -45,6 +45,7 @@ async function initSchema() {
       name VARCHAR(255) UNIQUE NOT NULL,
       category VARCHAR(100) DEFAULT 'Vegetables',
       purchase_price ${doubleType} DEFAULT 0,
+      average_purchase_rate ${doubleType} DEFAULT 0,
       selling_price ${doubleType} DEFAULT 0,
       unit VARCHAR(50) DEFAULT 'Kg',
       stock_quantity ${doubleType} DEFAULT 0,
@@ -83,6 +84,7 @@ async function initSchema() {
       product_name VARCHAR(255) NOT NULL,
       quantity ${doubleType} NOT NULL,
       rate ${doubleType} NOT NULL,
+      purchase_rate ${doubleType} DEFAULT 0,
       amount ${doubleType} NOT NULL,
       remarks VARCHAR(255),
       created_at ${datetimeType}
@@ -177,6 +179,56 @@ async function initSchema() {
     )
   `);
 
+  // 12. suppliers table
+  await query(`
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id ${pk},
+      name VARCHAR(255) NOT NULL,
+      mobile VARCHAR(50) UNIQUE NOT NULL,
+      address TEXT,
+      outstanding_balance ${doubleType} DEFAULT 0,
+      total_purchases ${doubleType} DEFAULT 0,
+      created_at ${datetimeType}
+    )
+  `);
+
+  // 13. purchases table
+  await query(`
+    CREATE TABLE IF NOT EXISTS purchases (
+      id ${pk},
+      supplier_id INTEGER,
+      partner_id INTEGER,
+      purchase_date VARCHAR(100) NOT NULL,
+      market_name VARCHAR(255),
+      product_id INTEGER NOT NULL,
+      quantity ${doubleType} NOT NULL,
+      purchase_rate ${doubleType} NOT NULL,
+      total_amount ${doubleType} NOT NULL,
+      transport_charge ${doubleType} DEFAULT 0,
+      labour_charge ${doubleType} DEFAULT 0,
+      other_charges ${doubleType} DEFAULT 0,
+      grand_total ${doubleType} NOT NULL,
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      remark TEXT,
+      bill_photo VARCHAR(255),
+      created_at ${datetimeType}
+    )
+  `);
+
+  // 14. expenses table (general business expenses)
+  await query(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id ${pk},
+      date VARCHAR(100) NOT NULL,
+      amount ${doubleType} NOT NULL,
+      category VARCHAR(100) NOT NULL,
+      partner_id INTEGER,
+      remark TEXT,
+      attachment VARCHAR(255),
+      created_at ${datetimeType}
+    )
+  `);
+
   const users = await query('SELECT * FROM users WHERE username = ?', ['admin']);
   if (users.length === 0) {
     const defaultPassword = 'admin123';
@@ -260,6 +312,22 @@ async function initSchema() {
       );
     }
     console.log('6 default business partners seeded.');
+  }
+
+  // --- MIGRATIONS FOR ERP UPGRADE ---
+  try {
+    await query("ALTER TABLE products ADD COLUMN average_purchase_rate REAL DEFAULT 0");
+    console.log("Migration: Added average_purchase_rate to products");
+    await query("UPDATE products SET average_purchase_rate = purchase_price");
+  } catch (err) {
+    // Ignore error if column already exists
+  }
+
+  try {
+    await query("ALTER TABLE invoice_items ADD COLUMN purchase_rate REAL DEFAULT 0");
+    console.log("Migration: Added purchase_rate to invoice_items");
+  } catch (err) {
+    // Ignore error if column already exists
   }
 }
 

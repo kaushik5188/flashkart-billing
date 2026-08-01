@@ -471,8 +471,8 @@ export default function Inventory({ token, API_URL }) {
                   {/* Product details info */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', marginBottom: '1.25rem', borderTop: '1px solid var(--border-light)', paddingTop: '0.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Purchase Rate:</span>
-                      <strong style={{ color: 'var(--text-main)' }}>₹{prod.purchase_price.toFixed(2)} / {prod.unit}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>Avg Purchase Rate:</span>
+                      <strong style={{ color: 'var(--text-main)' }}>₹{(prod.average_purchase_rate || prod.purchase_price).toFixed(2)} / {prod.unit}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Selling Rate:</span>
