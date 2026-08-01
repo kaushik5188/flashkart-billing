@@ -91,6 +91,22 @@ export default function Purchases({ token, API_URL }) {
     setError('');
   };
 
+  const updateCartItem = (index, field, value) => {
+    const newCart = [...cart];
+    newCart[index][field] = value;
+    
+    if (field === 'quantity' || field === 'total_amount') {
+      const q = parseFloat(newCart[index].quantity) || 0;
+      const amt = parseFloat(newCart[index].total_amount) || 0;
+      if (q > 0) {
+        newCart[index].purchase_rate = parseFloat((amt / q).toFixed(2));
+      } else {
+        newCart[index].purchase_rate = 0;
+      }
+    }
+    setCart(newCart);
+  };
+
   // Remove item from cart
   const removeItem = (index) => {
     const newCart = [...cart];
@@ -333,11 +349,17 @@ export default function Purchases({ token, API_URL }) {
                     <tbody>
                       {cart.map((item, idx) => (
                         <tr key={idx}>
-                          <td style={{ fontWeight: 600 }}>{item.vegetable_name}</td>
-                          <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                          <td style={{ textAlign: 'right' }}>₹{item.purchase_rate}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700 }}>₹{item.total_amount.toFixed(2)}</td>
+                          <td>
+                            <input type="text" className="form-control" style={{ padding: '0.25rem 0.5rem', height: '32px' }} value={item.vegetable_name} onChange={(e) => updateCartItem(idx, 'vegetable_name', e.target.value)} />
+                          </td>
                           <td style={{ textAlign: 'right' }}>
+                            <input type="number" step="0.01" className="form-control" style={{ padding: '0.25rem 0.5rem', height: '32px', textAlign: 'right', width: '80px', display: 'inline-block' }} value={item.quantity} onChange={(e) => updateCartItem(idx, 'quantity', e.target.value)} />
+                          </td>
+                          <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>₹{item.purchase_rate}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <input type="number" step="0.01" className="form-control" style={{ padding: '0.25rem 0.5rem', height: '32px', textAlign: 'right', width: '100px', display: 'inline-block' }} value={item.total_amount} onChange={(e) => updateCartItem(idx, 'total_amount', e.target.value)} />
+                          </td>
+                          <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
                             <button type="button" onClick={() => removeItem(idx)} className="btn btn-danger" style={{ padding: '0.4rem' }}>
                               <Trash2 size={14} />
                             </button>
