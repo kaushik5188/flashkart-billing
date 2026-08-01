@@ -229,6 +229,7 @@ export default function Purchases({ token, API_URL }) {
                   <label className="form-label">Paid By (Partner)</label>
                   <select name="partner_id" className="form-control" value={formData.partner_id} onChange={handleChange}>
                     <option value="">-- Select Partner --</option>
+                    <option value="FlashKart">FlashKart</option>
                     {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>

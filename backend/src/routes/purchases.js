@@ -73,7 +73,7 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/', verifyToken, async (req, res) => {
   try {
     const list = await query(`
-      SELECT p.*, pt.name as partner_name
+      SELECT p.*, COALESCE(pt.name, p.partner_id) as partner_name
       FROM purchase_invoices p
       LEFT JOIN partners pt ON p.partner_id = pt.id
       ORDER BY p.id DESC
