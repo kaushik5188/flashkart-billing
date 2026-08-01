@@ -118,6 +118,32 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Modern SaaS Cards */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: rgba(46, 125, 50, 0.2);
+}
+
+.card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(245, 247, 250, 0.4);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 /* Glass Card */
 .glass-card {
   background: var(--bg-card);

@@ -64,106 +64,55 @@ export default function Dashboard({ setView, token, API_URL, setCustomerId }) {
     value: b.total_revenue
   }));
 
-  return (
-    <div className="page-container">
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+  const StatCard = ({ title, value, icon: Icon, color, lightColor }) => (
+    <div className="card stat-card" style={{ padding: '1.5rem', border: 'none', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 className="page-title">Enterprise Dashboard</h1>
-          <p className="page-subtitle">Real-time overview of your business</p>
+          <h4 style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</h4>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>{value}</div>
         </div>
-        <select className="input" style={{ width: 'auto', fontWeight: 600 }} value={chartRange} onChange={e => setChartRange(e.target.value)}>
-          <option value="month">Last 30 Days</option>
-          <option value="year">This Year (Monthly)</option>
-        </select>
+        <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: lightColor, color: color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={24} />
+        </div>
+      </div>
+      <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '4px', background: color }}></div>
+    </div>
+  );
+
+  return (
+    <div className="page-container animate-fade">
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
+        <div>
+          <h1 className="page-title" style={{ fontSize: '2.2rem', letterSpacing: '-1px' }}>Enterprise Dashboard</h1>
+          <p className="page-subtitle" style={{ fontSize: '1rem' }}>Real-time overview of your business</p>
+        </div>
+        <div style={{ background: '#fff', borderRadius: '10px', padding: '4px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-light)' }}>
+          <select style={{ border: 'none', outline: 'none', background: 'transparent', padding: '0.5rem 1rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }} value={chartRange} onChange={e => setChartRange(e.target.value)}>
+            <option value="month">Last 30 Days</option>
+            <option value="year">This Year (Monthly)</option>
+          </select>
+        </div>
       </header>
 
       {/* KPI CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        
-        <div className="card stat-card" style={{ borderLeft: '4px solid var(--color-green)' }}>
-          <div className="stat-icon" style={{ color: 'var(--color-green)', backgroundColor: 'var(--color-green-light)' }}>
-            <DollarSign size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Today's Sales</h4>
-            <div className="stat-value">{fmt(stats?.salesToday)}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card" style={{ borderLeft: '4px solid var(--color-orange)' }}>
-          <div className="stat-icon" style={{ color: 'var(--color-orange)', backgroundColor: 'var(--color-orange-light)' }}>
-            <ShoppingCart size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Today's Purchase</h4>
-            <div className="stat-value">{fmt(stats?.purchasesToday)}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card" style={{ borderLeft: '4px solid var(--color-danger)' }}>
-          <div className="stat-icon" style={{ color: 'var(--color-danger)', backgroundColor: '#FEE2E2' }}>
-            <ArrowDown size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Today's Expenses</h4>
-            <div className="stat-value">{fmt(stats?.expensesToday)}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card" style={{ borderLeft: '4px solid #6A1B9A' }}>
-          <div className="stat-icon" style={{ color: '#6A1B9A', backgroundColor: '#F3E5F5' }}>
-            <TrendingUp size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Today's Profit</h4>
-            <div className="stat-value">{fmt(stats?.profitToday)}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card" style={{ borderLeft: '4px solid var(--color-blue)' }}>
-          <div className="stat-icon" style={{ color: 'var(--color-blue)', backgroundColor: 'var(--color-blue-light)' }}>
-            <Layers size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Current Stock Value</h4>
-            <div className="stat-value">{fmt(stats?.stockValue)}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-icon"><Users size={24} /></div>
-          <div className="stat-content">
-            <h4 className="stat-label">Total Customers</h4>
-            <div className="stat-value">{stats?.custCount}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card">
-          <div className="stat-icon"><Receipt size={24} /></div>
-          <div className="stat-content">
-            <h4 className="stat-label">Total Bills Today</h4>
-            <div className="stat-value">{stats?.billsToday}</div>
-          </div>
-        </div>
-
-        <div className="card stat-card" style={{ borderLeft: '4px solid var(--color-orange)' }}>
-          <div className="stat-icon" style={{ color: 'var(--color-orange)', backgroundColor: 'var(--color-orange-light)' }}>
-            <Wallet size={24} />
-          </div>
-          <div className="stat-content">
-            <h4 className="stat-label">Pending Payments</h4>
-            <div className="stat-value">{fmt(stats?.outstandingTotal)}</div>
-          </div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <StatCard title="Today's Sales" value={fmt(stats?.salesToday)} icon={DollarSign} color="var(--color-green)" lightColor="var(--color-green-light)" />
+        <StatCard title="Today's Purchase" value={fmt(stats?.purchasesToday)} icon={ShoppingCart} color="var(--color-orange)" lightColor="var(--color-orange-light)" />
+        <StatCard title="Today's Expenses" value={fmt(stats?.expensesToday)} icon={ArrowDown} color="var(--color-danger)" lightColor="#FEE2E2" />
+        <StatCard title="Today's Profit" value={fmt(stats?.profitToday)} icon={TrendingUp} color="#6A1B9A" lightColor="#F3E5F5" />
+        <StatCard title="Current Stock Value" value={fmt(stats?.stockValue)} icon={Layers} color="var(--color-info)" lightColor="#E1F5FE" />
+        <StatCard title="Total Customers" value={stats?.custCount} icon={Users} color="#00897B" lightColor="#E0F2F1" />
+        <StatCard title="Total Bills Today" value={stats?.billsToday} icon={Receipt} color="#455A64" lightColor="#CFD8DC" />
+        <StatCard title="Pending Payments" value={fmt(stats?.outstandingTotal)} icon={Wallet} color="var(--color-warning)" lightColor="#FFF8E1" />
       </div>
 
       {/* CHARTS GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
         
         {/* Sales vs Purchases Area Chart */}
-        <div className="card">
+        <div className="card" style={{ padding: 0, overflow: 'visible' }}>
           <div className="card-header"><h3>Revenue & Purchases ({chartRange === 'year' ? 'Monthly' : 'Daily'})</h3></div>
-          <div style={{ height: 300, padding: '1rem' }}>
+          <div style={{ height: 320, padding: '1.5rem' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
@@ -176,69 +125,72 @@ export default function Dashboard({ setView, token, API_URL, setCustomerId }) {
                     <stop offset="95%" stopColor="var(--color-orange)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="label" tick={{fontSize: 12}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} />
-                <YAxis tick={{fontSize: 12}} tickFormatter={(v) => `₹${v/1000}k`} />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <Tooltip formatter={(value) => `₹${value}`} />
-                <Legend />
-                <Area type="monotone" dataKey="sales" name="Sales" stroke="var(--color-green)" fillOpacity={1} fill="url(#colorSales)" />
-                <Area type="monotone" dataKey="purchases" name="Purchases" stroke="var(--color-orange)" fillOpacity={1} fill="url(#colorPurchases)" />
+                <XAxis dataKey="label" tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(v) => `₹${v/1000}k`} axisLine={false} tickLine={false} dx={-10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
+                <Tooltip formatter={(value) => `₹${value}`} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
+                <Area type="monotone" dataKey="sales" name="Sales" stroke="var(--color-green)" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+                <Area type="monotone" dataKey="purchases" name="Purchases" stroke="var(--color-orange)" strokeWidth={3} fillOpacity={1} fill="url(#colorPurchases)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Profit Trend Line Chart */}
-        <div className="card">
+        <div className="card" style={{ padding: 0, overflow: 'visible' }}>
           <div className="card-header"><h3>Net Profit Trend</h3></div>
-          <div style={{ height: 300, padding: '1rem' }}>
+          <div style={{ height: 320, padding: '1.5rem' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <XAxis dataKey="label" tick={{fontSize: 12}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} />
-                <YAxis tick={{fontSize: 12}} tickFormatter={(v) => `₹${v/1000}k`} />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <Tooltip formatter={(value) => `₹${value}`} />
-                <Legend />
-                <Line type="monotone" dataKey="profit" name="Net Profit" stroke="#6A1B9A" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                <XAxis dataKey="label" tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(v) => `₹${v/1000}k`} axisLine={false} tickLine={false} dx={-10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
+                <Tooltip formatter={(value) => `₹${value}`} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
+                <Line type="monotone" dataKey="profit" name="Net Profit" stroke="#6A1B9A" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6, strokeWidth: 0}} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Expenses Bar Chart */}
-        <div className="card">
+        <div className="card" style={{ padding: 0, overflow: 'visible' }}>
           <div className="card-header"><h3>Expenses ({chartRange === 'year' ? 'Monthly' : 'Daily'})</h3></div>
-          <div style={{ height: 300, padding: '1rem' }}>
+          <div style={{ height: 320, padding: '1.5rem' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <XAxis dataKey="label" tick={{fontSize: 12}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} />
-                <YAxis tick={{fontSize: 12}} tickFormatter={(v) => `₹${v/1000}k`} />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <Tooltip formatter={(value) => `₹${value}`} />
-                <Legend />
-                <Bar dataKey="expenses" name="Expenses" fill="var(--color-danger)" radius={[4, 4, 0, 0]} />
+                <XAxis dataKey="label" tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(l) => chartRange === 'year' ? l : l.substring(5)} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={{fontSize: 12, fill: 'var(--text-muted)'}} tickFormatter={(v) => `₹${v/1000}k`} axisLine={false} tickLine={false} dx={-10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-light)" />
+                <Tooltip formatter={(value) => `₹${value}`} cursor={{fill: 'var(--bg-app)'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }} />
+                <Bar dataKey="expenses" name="Expenses" fill="var(--color-danger)" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Top Products Pie Chart */}
-        <div className="card">
+        <div className="card" style={{ padding: 0, overflow: 'visible' }}>
           <div className="card-header"><h3>Top Selling Products (Revenue)</h3></div>
-          <div style={{ height: 300, padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ height: 320, padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {topProductsData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={topProductsData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie data={topProductsData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={5} dataKey="value" label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}>
                     {topProductsData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `₹${value}`} />
+                  <Tooltip formatter={(value) => `₹${value}`} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ color: 'var(--text-muted)' }}>No product data available</div>
+              <div style={{ color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <PieChartIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                <p>No product data available</p>
+              </div>
             )}
           </div>
         </div>
