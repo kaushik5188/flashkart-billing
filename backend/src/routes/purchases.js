@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
     await query(
       `INSERT INTO inventory_transactions (product_id, type, quantity, rate, transaction_date, reference_id, description) 
        VALUES (?, 'IN', ?, ?, ?, ?, ?)`,
-      [product_id, q, purchase_rate, purchase_date, \`PUR-\${purchaseId}\`, 'Market Purchase']
+      [product_id, q, purchase_rate, purchase_date, `PUR-${purchaseId}`, 'Market Purchase']
     );
 
     // 5. Update Supplier Ledger (Total Purchases, and outstanding balance if unpaid)

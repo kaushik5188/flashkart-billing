@@ -36,10 +36,10 @@ export default function Purchases({ token, API_URL, user }) {
     setLoading(true);
     try {
       const [purRes, supRes, prodRes, partRes] = await Promise.all([
-        fetch(`${API_URL}/api/purchases`, { headers: { 'Authorization': \`Bearer \${token}\` } }),
-        fetch(`${API_URL}/api/suppliers`, { headers: { 'Authorization': \`Bearer \${token}\` } }),
-        fetch(`${API_URL}/api/products`, { headers: { 'Authorization': \`Bearer \${token}\` } }),
-        fetch(`${API_URL}/api/settings/partners`, { headers: { 'Authorization': \`Bearer \${token}\` } }).catch(() => ({ ok: false }))
+        fetch(`${API_URL}/api/purchases`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/suppliers`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/products`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/settings/partners`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => ({ ok: false }))
       ]);
 
       if (purRes.ok) setPurchases(await purRes.json());
@@ -47,7 +47,7 @@ export default function Purchases({ token, API_URL, user }) {
       if (prodRes.ok) setProducts(await prodRes.json());
       
       // Fallback if partners API doesn't exist yet, we'll implement it if needed, but for now it might be under /api/expenses/partners
-      const ptRes = await fetch(`${API_URL}/api/expenses/partners`, { headers: { 'Authorization': \`Bearer \${token}\` } });
+      const ptRes = await fetch(`${API_URL}/api/expenses/partners`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (ptRes.ok) setPartners(await ptRes.json());
 
     } catch (err) {
@@ -90,7 +90,7 @@ export default function Purchases({ token, API_URL, user }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${token}\`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
