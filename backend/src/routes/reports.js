@@ -21,14 +21,8 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const todayExp = await query('SELECT SUM(amount) as total FROM expenses WHERE date = ?', [todayStr]);
     const expensesToday = todayExp[0].total || 0;
 
-    // 4. Today's Profit Calculation (Gross Margin from Sales - Expenses)
-    const todayGrossMargin = await query(`
-      SELECT SUM((ii.rate - ii.purchase_rate) * ii.quantity) as gross_profit
-      FROM invoice_items ii
-      JOIN invoices i ON ii.invoice_id = i.id
-      WHERE i.invoice_date = ?
-    `, [todayStr]);
-    const profitToday = (todayGrossMargin[0].gross_profit || 0) - expensesToday;
+    // 4. Today's Profit Calculation (Sales - Purchases - Expenses)
+    const profitToday = salesToday - purchasesToday - expensesToday;
 
     // 5. Current Stock Value
     const stockValQuery = await query('SELECT SUM(stock_quantity * average_purchase_rate) as value FROM products WHERE stock_quantity > 0');
@@ -95,10 +89,10 @@ router.get('/charts', verifyToken, async (req, res) => {
     const isYear = range === 'year';
     const limitClause = isYear ? '' : 'LIMIT 30';
     
-    // 1. Sales and Gross Profit
+    // 1. Sales
     const salesSql = isYear ? 
-      `SELECT SUBSTR(i.invoice_date, 1, 7) as label, SUM(i.grand_total) as sales, SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as profit FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id WHERE i.invoice_date LIKE ? GROUP BY label ORDER BY label DESC` :
-      `SELECT i.invoice_date as label, SUM(i.grand_total) as sales, SUM(ii.amount - (ii.purchase_rate * ii.quantity)) as profit FROM invoices i JOIN invoice_items ii ON i.id = ii.invoice_id GROUP BY label ORDER BY label DESC ${limitClause}`;
+      `SELECT SUBSTR(invoice_date, 1, 7) as label, SUM(grand_total) as sales FROM invoices WHERE invoice_date LIKE ? GROUP BY label ORDER BY label DESC` :
+      `SELECT invoice_date as label, SUM(grand_total) as sales FROM invoices GROUP BY label ORDER BY label DESC ${limitClause}`;
     
     const params = isYear ? [new Date().getFullYear().toString() + '%'] : [];
     const salesData = await query(salesSql, params);
@@ -119,23 +113,23 @@ router.get('/charts', verifyToken, async (req, res) => {
     const merged = {};
     const addData = (data, key1, key2) => {
       data.forEach(row => {
-        if (!merged[row.label]) merged[row.label] = { label: row.label, sales: 0, profit: 0, purchases: 0, expenses: 0 };
+        if (!merged[row.label]) merged[row.label] = { label: row.label, sales: 0, purchases: 0, expenses: 0 };
         if (key1) merged[row.label][key1] = row[key1] || 0;
         if (key2) merged[row.label][key2] = row[key2] || 0;
       });
     };
 
-    addData(salesData, 'sales', 'profit');
+    addData(salesData, 'sales', null);
     addData(purchasesData, 'purchases', null);
     addData(expData, 'expenses', null);
 
     // Sort ascending for chart (chronological)
     let finalData = Object.values(merged).sort((a, b) => a.label.localeCompare(b.label));
 
-    // Calculate true net profit = gross profit - expenses
+    // Calculate true cashflow profit = sales - purchases - expenses
     finalData = finalData.map(d => ({
       ...d,
-      profit: d.profit - d.expenses
+      profit: d.sales - d.purchases - d.expenses
     }));
 
     res.json(finalData);
