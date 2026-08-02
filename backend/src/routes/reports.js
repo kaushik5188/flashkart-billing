@@ -24,6 +24,18 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     // 4. Today's Profit Calculation (Sales - Purchases - Expenses)
     const profitToday = salesToday - purchasesToday - expensesToday;
 
+    // 4b. Monthly stats calculation
+    const monthSalesQ = await query('SELECT SUM(grand_total) as total FROM invoices WHERE invoice_date LIKE ?', [currentMonthStr]);
+    const monthSales = monthSalesQ[0].total || 0;
+
+    const monthPurchasesQ = await query('SELECT SUM(grand_total) as total FROM purchase_invoices WHERE purchase_date LIKE ?', [currentMonthStr]);
+    const monthPurchases = monthPurchasesQ[0].total || 0;
+
+    const monthExpQ = await query('SELECT SUM(amount) as total FROM expenses WHERE date LIKE ?', [currentMonthStr]);
+    const monthlyExpenses = monthExpQ[0].total || 0;
+
+    const monthlyProfit = monthSales - monthPurchases - monthlyExpenses;
+
     // 5. Current Stock Value
     const stockValQuery = await query('SELECT SUM(stock_quantity * average_purchase_rate) as value FROM products WHERE stock_quantity > 0');
     const stockValue = stockValQuery[0].value || 0;
@@ -67,6 +79,8 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
       purchasesToday,
       expensesToday,
       profitToday,
+      monthlyExpenses,
+      monthlyProfit,
       stockValue,
       custCount,
       outstandingTotal,
