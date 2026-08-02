@@ -100,7 +100,7 @@ export default function Dashboard({ setView, token, API_URL, setCustomerId }) {
         <StatCard title="Today's Purchase" value={fmt(stats?.purchasesToday)} icon={ShoppingCart} color="var(--color-orange)" lightColor="var(--color-orange-light)" />
         <StatCard title="Today's Expenses" value={fmt(stats?.expensesToday)} icon={ArrowDown} color="var(--color-danger)" lightColor="#FEE2E2" />
         <StatCard title="Today's Profit" value={fmt(stats?.profitToday)} icon={TrendingUp} color="#6A1B9A" lightColor="#F3E5F5" />
-        <StatCard title="Current Stock Value" value={fmt(stats?.stockValue)} icon={Layers} color="var(--color-info)" lightColor="#E1F5FE" />
+
         <StatCard title="Total Customers" value={stats?.custCount} icon={Users} color="#00897B" lightColor="#E0F2F1" />
         <StatCard title="Total Bills Today" value={stats?.billsToday} icon={Receipt} color="#455A64" lightColor="#CFD8DC" />
         <StatCard title="Pending Payments" value={fmt(stats?.outstandingTotal)} icon={Wallet} color="var(--color-warning)" lightColor="#FFF8E1" />
