@@ -145,8 +145,8 @@ export default function UsersPage({ token, API_URL, user }) {
       {/* Role Info Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { role: 'Admin', icon: ShieldCheck, color: 'var(--color-green)', bg: 'var(--color-green-light)', desc: 'Full access — can create/edit/delete all records, manage users, view all reports, edit ledger entries.' },
-          { role: 'Staff', icon: Users, color: 'var(--color-orange)', bg: 'var(--color-orange-light)', desc: 'Limited access — can add bills, add ledger entries, and view reports. Cannot delete records or manage users.' }
+          { role: 'Admin', icon: ShieldCheck, color: 'var(--color-green)', bg: 'var(--color-green-light)', desc: 'Full access — can create/edit/delete all records, manage users, and view all reports.' },
+          { role: 'Staff', icon: Users, color: 'var(--color-orange)', bg: 'var(--color-orange-light)', desc: 'Limited access — can add bills, and view reports. Cannot delete records or manage users.' }
         ].map(r => {
           const Icon = r.icon;
           return (

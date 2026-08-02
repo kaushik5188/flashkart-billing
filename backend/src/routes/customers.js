@@ -169,8 +169,8 @@ router.get('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Get customer full bill history and ledger list
-router.get('/:id/ledger', verifyToken, async (req, res) => {
+// Get customer full bill history
+router.get('/:id/history', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { year, month, date } = req.query;
   try {
@@ -214,8 +214,8 @@ router.get('/:id/ledger', verifyToken, async (req, res) => {
 
     res.json({ invoices: bills, payments });
   } catch (err) {
-    console.error('Ledger fetch error:', err);
-    res.status(500).json({ error: 'Error fetching customer ledger.' });
+    console.error('History fetch error:', err);
+    res.status(500).json({ error: 'Error fetching customer history.' });
   }
 });
 

@@ -143,7 +143,7 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
       <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title">Enterprise Reports Hub</h1>
-          <p className="page-subtitle">Generate, audit, and export comprehensive business ledgers</p>
+          <p className="page-subtitle">Generate, audit, and export comprehensive business reports</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <button onClick={exportToCSV} className="btn btn-secondary">

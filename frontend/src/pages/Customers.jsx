@@ -84,7 +84,7 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
       setProfile(profData);
 
       // Get ledger list
-      let url = `${API_URL}/api/customers/${id}/ledger?`;
+      let url = `${API_URL}/api/customers/${id}/history?`;
       if (filterDate) url += `date=${filterDate}`;
       else {
         if (filterYear) url += `year=${filterYear}&`;

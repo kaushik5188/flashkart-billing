@@ -28,7 +28,7 @@ export default function Sidebar({ currentView, setView, user, logout, theme, tog
     { id: 'expenses', name: 'Expenses', icon: Wallet },
     { id: 'reports', name: 'Reports', icon: BarChart3 },
     ...(user?.role === 'admin' ? [
-      { id: 'ledger', name: 'Ledger', icon: BookOpen },
+
       { id: 'settings', name: 'Settings', icon: SettingsIcon },
       { id: 'users', name: 'Users', icon: UserCog }
     ] : [])

@@ -9,14 +9,13 @@ import Customers from './pages/Customers';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
-import Ledger from './pages/Ledger';
 import UsersPage from './pages/Users';
 import Expenses from './pages/Expenses';
 import Bills from './pages/Bills';
 import Purchases from './pages/Purchases';
 import Suppliers from './pages/Suppliers';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('fk_token') || null);
@@ -141,14 +140,6 @@ export default function App() {
 
         {currentView === 'settings' && (
           <Settings
-            token={token}
-            API_URL={API_URL}
-            user={user}
-          />
-        )}
-
-        {currentView === 'ledger' && (
-          <Ledger
             token={token}
             API_URL={API_URL}
             user={user}

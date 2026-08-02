@@ -125,24 +125,6 @@ async function initSchema() {
     )
   `);
 
-  // 9. ledger_entries table — manual debit/credit entries per customer
-  await query(`
-    CREATE TABLE IF NOT EXISTS ledger_entries (
-      id ${pk},
-      customer_id INTEGER NOT NULL,
-      entry_date VARCHAR(100) NOT NULL,
-      type VARCHAR(10) NOT NULL,
-      amount ${doubleType} NOT NULL,
-      payment_method VARCHAR(50) DEFAULT 'Cash',
-      remark TEXT,
-      added_by VARCHAR(100),
-      user_id INTEGER,
-      source VARCHAR(50) DEFAULT 'MANUAL',
-      reference_id VARCHAR(100),
-      is_deleted INTEGER DEFAULT 0,
-      created_at ${datetimeType}
-    )
-  `);
 
   // 10. partners table — 6 business partners who share costs
   await query(`
