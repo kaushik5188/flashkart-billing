@@ -19,7 +19,8 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
 
     // 3. Today's Expenses
     const todayExp = await query('SELECT SUM(amount) as total FROM expenses WHERE date = ?', [todayStr]);
-    const expensesToday = todayExp[0].total || 0;
+    const todayPartnerExp = await query('SELECT SUM(amount) as total FROM partner_expenses WHERE expense_date = ? AND is_deleted = 0', [todayStr]);
+    const expensesToday = (todayExp[0].total || 0) + (todayPartnerExp[0].total || 0);
 
     // 4. Today's Profit Calculation (Sales - Purchases - Expenses)
     const profitToday = salesToday - purchasesToday - expensesToday;
@@ -32,7 +33,8 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const monthPurchases = monthPurchasesQ[0].total || 0;
 
     const monthExpQ = await query('SELECT SUM(amount) as total FROM expenses WHERE date LIKE ?', [currentMonthStr]);
-    const monthlyExpenses = monthExpQ[0].total || 0;
+    const monthPartnerExpQ = await query('SELECT SUM(amount) as total FROM partner_expenses WHERE expense_date LIKE ? AND is_deleted = 0', [currentMonthStr]);
+    const monthlyExpenses = (monthExpQ[0].total || 0) + (monthPartnerExpQ[0].total || 0);
 
     const monthlyProfit = monthSales - monthPurchases - monthlyExpenses;
 
