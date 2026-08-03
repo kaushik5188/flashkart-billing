@@ -17,13 +17,13 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const todayPurchases = await query('SELECT SUM(grand_total) as total FROM purchase_invoices WHERE purchase_date = ?', [todayStr]);
     const purchasesToday = todayPurchases[0].total || 0;
 
-    // 3. Today's Expenses
+    // 3. Today's Expenses (Purchase Bills + Business Expenses)
     const todayExp = await query('SELECT SUM(amount) as total FROM expenses WHERE date = ?', [todayStr]);
-    const todayPartnerExp = await query('SELECT SUM(amount) as total FROM partner_expenses WHERE expense_date = ? AND is_deleted = 0', [todayStr]);
-    const expensesToday = (todayExp[0].total || 0) + (todayPartnerExp[0].total || 0);
+    const businessExpensesToday = todayExp[0].total || 0;
+    const expensesToday = purchasesToday + businessExpensesToday;
 
-    // 4. Today's Profit Calculation (Sales - Purchases - Expenses)
-    const profitToday = salesToday - purchasesToday - expensesToday;
+    // 4. Today's Profit Calculation (Sales - Expenses)
+    const profitToday = salesToday - expensesToday;
 
     // 4b. Monthly stats calculation
     const monthSalesQ = await query('SELECT SUM(grand_total) as total FROM invoices WHERE invoice_date LIKE ?', [currentMonthStr]);
@@ -33,10 +33,10 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const monthPurchases = monthPurchasesQ[0].total || 0;
 
     const monthExpQ = await query('SELECT SUM(amount) as total FROM expenses WHERE date LIKE ?', [currentMonthStr]);
-    const monthPartnerExpQ = await query('SELECT SUM(amount) as total FROM partner_expenses WHERE expense_date LIKE ? AND is_deleted = 0', [currentMonthStr]);
-    const monthlyExpenses = (monthExpQ[0].total || 0) + (monthPartnerExpQ[0].total || 0);
+    const monthlyBusinessExpenses = monthExpQ[0].total || 0;
+    const monthlyExpenses = monthPurchases + monthlyBusinessExpenses;
 
-    const monthlyProfit = monthSales - monthPurchases - monthlyExpenses;
+    const monthlyProfit = monthSales - monthlyExpenses;
 
     // 5. Current Stock Value
     const stockValQuery = await query('SELECT SUM(stock_quantity * average_purchase_rate) as value FROM products WHERE stock_quantity > 0');
@@ -142,11 +142,20 @@ router.get('/charts', verifyToken, async (req, res) => {
     // Sort ascending for chart (chronological)
     let finalData = Object.values(merged).sort((a, b) => a.label.localeCompare(b.label));
 
-    // Calculate true cashflow profit = sales - purchases - expenses
-    finalData = finalData.map(d => ({
-      ...d,
-      profit: d.sales - d.purchases - d.expenses
-    }));
+    // Calculate true cashflow profit = sales - expenses
+    // Expenses here is combined (Purchases + Business Expenses)
+    finalData = finalData.map(d => {
+      const sales = d.sales || 0;
+      const purchases = d.purchases || 0;
+      const businessExpenses = d.expenses || 0;
+      const combinedExpenses = purchases + businessExpenses;
+      
+      return {
+        ...d,
+        expenses: combinedExpenses,
+        profit: sales - combinedExpenses
+      };
+    });
 
     res.json(finalData);
   } catch (err) {
