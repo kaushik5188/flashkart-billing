@@ -75,16 +75,22 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
     if (!invoice) return;
     
     // First, auto-download the PDF so it's ready to attach
+    const root = document.getElementById('fk-print-root');
+    const originalScroll = root ? root.scrollTop : 0;
+    if (root) root.scrollTop = 0;
+
     const element = document.getElementById('fk-invoice-document');
     const opt = {
       margin: [5, 0, 5, 0],
       filename: `Invoice_${invoice.bill_number}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
-    window.html2pdf().set(opt).from(element).save();
+    window.html2pdf().set(opt).from(element).save().then(() => {
+      if (root) root.scrollTop = originalScroll;
+    });
 
     // Then, open the WhatsApp chat with that specific number
     const phone = (invoice.customer_mobile || '').replace(/\D/g, '');
@@ -98,12 +104,16 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
   };
 
   const handleDownload = () => {
+    const root = document.getElementById('fk-print-root');
+    const originalScroll = root ? root.scrollTop : 0;
+    if (root) root.scrollTop = 0;
+
     const element = document.getElementById('fk-invoice-document');
     const opt = {
       margin: [5, 0, 5, 0],
       filename: `Invoice_${invoice.bill_number}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
@@ -112,11 +122,15 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = () => {
-        window.html2pdf().set(opt).from(element).save();
+        window.html2pdf().set(opt).from(element).save().then(() => {
+          if (root) root.scrollTop = originalScroll;
+        });
       };
       document.body.appendChild(script);
     } else {
-      window.html2pdf().set(opt).from(element).save();
+      window.html2pdf().set(opt).from(element).save().then(() => {
+        if (root) root.scrollTop = originalScroll;
+      });
     }
   };
 
