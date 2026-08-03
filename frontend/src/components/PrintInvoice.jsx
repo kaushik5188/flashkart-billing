@@ -463,11 +463,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                       {subtotal > 0 ? '₹ ' + subtotal.toFixed(2) : ''}
                     </td>
                   </tr>
-                  {/* Discount */}
-                  <tr>
-                    <td style={summaryLabelCell('#f5f5f5', '#333', true)}>DISCOUNT</td>
-                    <td style={summaryValCell('#f5f5f5', '#333')}>₹ {(invoice.discount || 0).toFixed(2)}</td>
-                  </tr>
+
                   {/* Final Total */}
                   <tr>
                     <td style={{ ...summaryLabelCell('#1B5E20', '#FFFFFF'), fontSize: '12px', fontWeight: 900, letterSpacing: '0.5px' }}>GRAND TOTAL</td>
