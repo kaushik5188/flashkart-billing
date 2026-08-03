@@ -77,11 +77,12 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
     // First, auto-download the PDF so it's ready to attach
     const element = document.getElementById('fk-invoice-document');
     const opt = {
-      margin: 0,
+      margin: [5, 0, 5, 0],
       filename: `Invoice_${invoice.bill_number}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
     window.html2pdf().set(opt).from(element).save();
 
@@ -99,11 +100,12 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
   const handleDownload = () => {
     const element = document.getElementById('fk-invoice-document');
     const opt = {
-      margin: 0,
+      margin: [5, 0, 5, 0],
       filename: `Invoice_${invoice.bill_number}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     if (!window.html2pdf) {
@@ -161,15 +163,17 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
       <style>{`
         @media print {
           body > *:not(#fk-print-root) { display: none !important; }
-          #fk-print-root { position: fixed !important; top: 0; left: 0; width: 100vw; z-index: 9999; }
+          #fk-print-root { position: fixed !important; top: 0; left: 0; width: 100vw; z-index: 9999; overflow: visible !important; }
           .fk-toolbar { display: none !important; }
-          @page { size: A4 portrait; margin: 0; }
-          .fk-invoice-page { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; }
+          @page { size: A4 portrait; margin: 10mm; }
+          .fk-invoice-page { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; width: 100% !important; min-height: auto !important; }
         }
+        tr { page-break-inside: avoid; }
+        .avoid-break { page-break-inside: avoid; }
       `}</style>
 
       {/* ── Full-screen overlay ── */}
-      <div id="fk-print-root" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 600, overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div id="fk-print-root" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 600, overflowY: 'auto', padding: '20px 0', display: 'block', textAlign: 'center' }}>
 
         {/* Toolbar */}
         <div className="fk-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -191,19 +195,20 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
         <div id="fk-invoice-document" className="fk-invoice-page" style={{
           width: '210mm',
           minHeight: '295mm', /* Reduced from 297mm to safely avoid triggering an extra blank page in html2pdf */
+          margin: '0 auto',
           backgroundColor: '#FFFFFF',
           fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
           fontSize: '11px',
           color: '#1a1a1a',
           boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
           borderRadius: '6px',
-          overflow: 'hidden',
+          overflow: 'visible',
           display: 'flex',
           flexDirection: 'column'
         }}>
 
           {/* ── HEADER BANNER ─────────────────────────────────────── */}
-          <div style={{ position: 'relative', backgroundColor: '#fff', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', backgroundColor: '#fff', overflow: 'hidden', flexShrink: 0 }} className="avoid-break">
 
             {/* Green wavy top accent */}
             <div style={{ height: '8px', background: 'linear-gradient(90deg, #1B5E20, #2E7D32, #388E3C, #2E7D32, #1B5E20)' }} />
@@ -286,7 +291,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
           </div>
 
           {/* ── BILL/INVOICE TITLE ─────────────────────────────────── */}
-          <div style={{ textAlign: 'center', margin: '10px 0 8px' }}>
+          <div style={{ textAlign: 'center', margin: '10px 0 8px', flexShrink: 0 }} className="avoid-break">
             <div style={{
               display: 'inline-block',
               background: 'linear-gradient(90deg, #1B5E20, #2E7D32)',
@@ -302,7 +307,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
           </div>
 
           {/* ── CUSTOMER INFO ROW ──────────────────────────────────── */}
-          <div style={{ padding: '8px 20px 6px', display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '0 30px' }}>
+          <div style={{ padding: '8px 20px 6px', display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '0 30px', flexShrink: 0 }} className="avoid-break">
             {/* Left */}
             <div style={{ fontSize: '10.5px' }}>
               <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'flex-end' }}>
@@ -396,7 +401,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
           </div>
 
           {/* ── TOTALS + THANK YOU ────────────────────────────────── */}
-          <div style={{ padding: '0 20px 6px', display: 'flex', gap: '12px', alignItems: 'flex-start', marginTop: '2px' }}>
+          <div style={{ padding: '0 20px 6px', display: 'flex', gap: '12px', alignItems: 'flex-start', marginTop: '2px', flexShrink: 0 }} className="avoid-break">
 
             {/* Left: Thank You + Amount in Words */}
             <div style={{ flex: 1.1 }}>
