@@ -15,7 +15,8 @@ import Bills from './pages/Bills';
 import Purchases from './pages/Purchases';
 import Suppliers from './pages/Suppliers';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Change API_URL port to 5001 since 5000 is occupied by HRMS
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 export default function App() {
   const [token, setToken] = useState(() => localStorage.getItem('fk_token') || null);
