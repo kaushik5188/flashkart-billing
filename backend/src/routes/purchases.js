@@ -8,7 +8,7 @@ router.post('/', verifyToken, async (req, res) => {
   const { 
     purchase_date, supplier_id, partner_id, market_name, 
     cart, // Array of items: { vegetable_name, quantity, purchase_rate, total_amount }
-    base_amount, transport_charge, labour_charge, other_charges, 
+    base_amount, transport_charge, labour_charge, other_charges, discount,
     grand_total, payment_method, remark, bill_photo 
   } = req.body;
 
@@ -23,11 +23,11 @@ router.post('/', verifyToken, async (req, res) => {
     const pDate = purchase_date || new Date().toISOString().split('T')[0];
     const result = await query(
       `INSERT INTO purchase_invoices 
-        (supplier_name, partner_id, purchase_date, market_name, total_items, base_amount, transport_charge, labour_charge, other_charges, grand_total, payment_method, remark, bill_photo) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (supplier_name, partner_id, purchase_date, market_name, total_items, base_amount, transport_charge, labour_charge, other_charges, discount, grand_total, payment_method, remark, bill_photo) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.body.supplier_name || 'Cash Purchase', partner_id || null, pDate, market_name, cart.length,
-        base_amount || 0, transport_charge || 0, labour_charge || 0, other_charges || 0,
+        base_amount || 0, transport_charge || 0, labour_charge || 0, other_charges || 0, discount || 0,
         grand_total, payment_method || 'Cash', remark, bill_photo
       ]
     );

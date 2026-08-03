@@ -27,6 +27,7 @@ export default function Purchases({ token, API_URL }) {
     transport_charge: '',
     labour_charge: '',
     other_charge: '',
+    discount: '',
     payment_method: 'Cash',
     remark: ''
   });
@@ -122,7 +123,8 @@ export default function Purchases({ token, API_URL }) {
   const t = parseFloat(formData.transport_charge) || 0;
   const l = parseFloat(formData.labour_charge) || 0;
   const o = parseFloat(formData.other_charge) || 0;
-  const grandTotal = baseAmount + t + l + o;
+  const d = parseFloat(formData.discount) || 0;
+  const grandTotal = baseAmount + t + l + o - d;
 
   // Submit the entire cart to the backend
   const handleSubmit = async (e) => {
@@ -174,6 +176,7 @@ export default function Purchases({ token, API_URL }) {
         transport_charge: '',
         labour_charge: '',
         other_charge: '',
+        discount: '',
         remark: ''
       });
       
@@ -220,6 +223,7 @@ export default function Purchases({ token, API_URL }) {
       transport_charge: p.transport_charge || '',
       labour_charge: p.labour_charge || '',
       other_charge: p.other_charges || '',
+      discount: p.discount || '',
       payment_method: p.payment_method || 'Cash',
       remark: p.remark || ''
     });
@@ -389,7 +393,7 @@ export default function Purchases({ token, API_URL }) {
               </div>
             </div>
             <div style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Transport (₹)</label>
                   <input type="number" step="0.01" name="transport_charge" className="form-control" value={formData.transport_charge} onChange={handleChange} />
@@ -401,6 +405,10 @@ export default function Purchases({ token, API_URL }) {
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Other (₹)</label>
                   <input type="number" step="0.01" name="other_charge" className="form-control" value={formData.other_charge} onChange={handleChange} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Discount (₹)</label>
+                  <input type="number" step="0.01" name="discount" className="form-control" value={formData.discount} onChange={handleChange} />
                 </div>
               </div>
             </div>

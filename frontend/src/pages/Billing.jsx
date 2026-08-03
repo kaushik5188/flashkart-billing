@@ -570,19 +570,6 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
               <span>{totalWeight.toFixed(1)} items/kg</span>
             </div>
 
-            {/* Discount */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Discount (₹):</span>
-              <input
-                type="number"
-                className="form-control"
-                style={{ width: '90px', padding: '2px 6px', textAlign: 'right', fontSize: '0.85rem' }}
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                min="0"
-              />
-            </div>
-
             {/* Previous Balance */}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-light)', paddingTop: '10px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Previous Outstanding:</span>

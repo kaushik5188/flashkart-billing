@@ -58,10 +58,10 @@ router.post('/', verifyToken, async (req, res) => {
   }
 
   try {
-    // Check if mobile already exists
-    const duplicate = await query('SELECT id FROM customers WHERE mobile = ?', [mobile]);
-    if (duplicate.length > 0) {
-      return res.status(400).json({ error: 'A customer with this mobile number already exists.' });
+    // Check if exactly identical record exists (same name and mobile)
+    const existing = await query('SELECT * FROM customers WHERE mobile = ? AND name = ?', [mobile, name]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'Customer with this exact name and mobile already exists.' });
     }
 
     const result = await query(
