@@ -291,9 +291,12 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
     });
     const disc = parseFloat(discount || 0);
     const prevBal = selectedCustomer ? selectedCustomer.outstanding_balance : 0;
-    const grandTotal = subtotal - disc + prevBal;
+    // grand_total = only this bill's amount (subtotal - discount)
+    // prevBal is shown for info but NOT added to this bill's grand_total
+    const grandTotal = subtotal - disc;
     const paid = parseFloat(paidAmount || 0);
-    const remaining = grandTotal - paid;
+    // remaining = this bill's amount + previous balance - what was paid now
+    const remaining = grandTotal + prevBal - paid;
     return { subtotal, totalWeight, prevBal, grandTotal, remaining };
   };
 
