@@ -3,7 +3,6 @@ import { Printer, X, MessageCircle, ArrowLeft, ShoppingCart } from 'lucide-react
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Convert a number to Indian words (e.g. 1250 → "One Thousand Two Hundred Fifty")
 function numberToWords(num) {
   if (isNaN(num) || num === undefined) return 'Zero';
   num = Math.round(num * 100) / 100;
@@ -27,13 +26,6 @@ function numberToWords(num) {
   let result = inWords(intPart).trim() || 'Zero';
   if (decPart > 0) result += ' and ' + inWords(decPart).trim() + ' Paise';
   return result + ' Only';
-}
-
-// ─── UPI QR URL ───────────────────────────────────────────────────────────────
-function getUpiQrUrl(upiId, companyName, amount, billNumber) {
-  if (!upiId) return null;
-  const upiStr = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(companyName || 'FLASHKART')}&am=${amount}&cu=INR&tn=${encodeURIComponent(billNumber)}`;
-  return `https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(upiStr)}`;
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -71,33 +63,30 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
 
   const handlePrint = () => window.print();
 
+  const getPdfOptions = (inv) => ({
+    margin: 0,
+    filename: `Invoice_${inv.bill_number}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, scrollY: 0, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] }
+  });
+
   const handleWhatsApp = () => {
     if (!invoice) return;
-    
-    // First, auto-download the PDF so it's ready to attach
     const root = document.getElementById('fk-print-root');
     const originalScroll = root ? root.scrollTop : 0;
     if (root) root.scrollTop = 0;
 
     const element = document.getElementById('fk-invoice-document');
-    const opt = {
-      margin: [5, 0, 5, 0],
-      filename: `Invoice_${invoice.bill_number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-    window.html2pdf().set(opt).from(element).save().then(() => {
+    window.html2pdf().set(getPdfOptions(invoice)).from(element).save().then(() => {
       if (root) root.scrollTop = originalScroll;
     });
 
-    // Then, open the WhatsApp chat with that specific number
     const phone = (invoice.customer_mobile || '').replace(/\D/g, '');
     const phoneParam = phone ? (phone.length === 10 ? '91' + phone : phone) : '';
     const msg = `Hello *${invoice.customer_name}*,\n\nPlease find your attached bill for *₹${invoice.grand_total.toFixed(2)}*.\n\nThank you for your business!`;
     
-    // Add a tiny delay so the browser can start the download before opening the new tab
     setTimeout(() => {
       window.open(`https://wa.me/${phoneParam}?text=${encodeURIComponent(msg)}`, '_blank');
     }, 800);
@@ -109,26 +98,17 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
     if (root) root.scrollTop = 0;
 
     const element = document.getElementById('fk-invoice-document');
-    const opt = {
-      margin: [5, 0, 5, 0],
-      filename: `Invoice_${invoice.bill_number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
     if (!window.html2pdf) {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = () => {
-        window.html2pdf().set(opt).from(element).save().then(() => {
+        window.html2pdf().set(getPdfOptions(invoice)).from(element).save().then(() => {
           if (root) root.scrollTop = originalScroll;
         });
       };
       document.body.appendChild(script);
     } else {
-      window.html2pdf().set(opt).from(element).save().then(() => {
+      window.html2pdf().set(getPdfOptions(invoice)).from(element).save().then(() => {
         if (root) root.scrollTop = originalScroll;
       });
     }
@@ -155,16 +135,23 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
     );
   }
 
-  // Pad items to minimum 10 rows
-  const displayItems = [...items];
-  while (displayItems.length < 10) displayItems.push(null);
+  // ---- Pagination Logic ----
+  const ITEMS_PER_PAGE = 25;
+  const chunkedItems = [];
+  if (!items || items.length === 0) {
+    chunkedItems.push([]);
+  } else {
+    for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+      chunkedItems.push(items.slice(i, i + ITEMS_PER_PAGE));
+    }
+  }
+  const totalPages = chunkedItems.length;
 
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0);
   const totalWeight = items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
   const finalBillTotal = subtotal - (invoice.discount || 0);
   const amountInWords = numberToWords(finalBillTotal);
 
-  // Format date as DD/MM/YYYY
   const fmtDate = (d) => {
     if (!d) return '__ / __ / ______';
     const [y, m, day] = d.split('-');
@@ -173,29 +160,20 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
 
   return (
     <>
-      {/* ── Print CSS injected inline for exact control ── */}
       <style>{`
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body > *:not(#fk-print-root) { display: none !important; }
-    #fk-print-root { position: relative !important; width: 100%; z-index: 9999; overflow: visible !important; display: block !important; }
-    .fk-toolbar { display: none !important; }
-    @page { size: A4 portrait; margin: 10mm; }
-    .fk-invoice-page { box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; width: 100% !important; min-height: auto !important; }
-    
-    /* Crucial rules for table repetition */
-    thead { display: table-header-group; }
-    tfoot { display: table-footer-group; }
-    tr, td, th { page-break-inside: avoid; break-inside: avoid; }
-    table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
-  }
-  tr { page-break-inside: avoid; }
-  .avoid-break { page-break-inside: avoid; }
-`}</style>
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff; }
+          body > *:not(#fk-print-root) { display: none !important; }
+          #fk-print-root { position: absolute; left: 0; top: 0; width: 100%; display: block !important; padding: 0 !important; }
+          .fk-toolbar { display: none !important; }
+          @page { size: A4 portrait; margin: 0; }
+          .fk-invoice-page { margin: 0 !important; box-shadow: none !important; border: none !important; page-break-after: always; }
+          .fk-invoice-page:last-child { page-break-after: auto; }
+        }
+      `}</style>
 
-      {/* ── Full-screen overlay ── */}
-      <div id="fk-print-root" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 600, overflowY: 'auto', padding: '20px 0', display: 'block', textAlign: 'center' }}>
-
+      <div id="fk-print-root" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.72)', zIndex: 600, overflowY: 'auto', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        
         {/* Toolbar */}
         <div className="fk-toolbar" style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <button onClick={onClose} style={toolBtn('#555')}>
@@ -212,99 +190,96 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
           </button>
         </div>
 
-        {/* ══════════════════════ INVOICE PAGE ══════════════════════ */}
-        <div id="fk-invoice-document" className="fk-invoice-page" style={{
-          width: '210mm',
-          margin: '0 auto',
-          backgroundColor: '#FFFFFF',
-          fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
-          fontSize: '11px',
-          color: '#1a1a1a',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
-          overflow: 'visible'
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <thead style={{ display: 'table-header-group' }}>
-              <tr>
-                <td colSpan={6} style={{ padding: 0, border: 'none' }}>
-                  
-                  {/* ── HEADER BANNER ─────────────────────────────────────── */}
-                  <div style={{ position: 'relative', backgroundColor: '#fff', overflow: 'hidden' }}>
-                    <div style={{ height: '8px', background: 'linear-gradient(90deg, #1B5E20, #2E7D32, #388E3C, #2E7D32, #1B5E20)' }} />
-                    <div style={{
-                      backgroundImage: 'url(/inv_header.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-                      padding: '12px 18px 0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '110px', position: 'relative'
-                    }}>
-                      {/* Center: Logo */}
-                      <div style={{ flex: 1, textAlign: 'center', zIndex: 2, position: 'relative', padding: '0 110px' }}>
-                        <div style={{ marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
-                          <div style={{ width: '44px', height: '44px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <ShoppingCart size={24} color="#FFFFFF" />
-                          </div>
-                        </div>
-                        <div style={{ lineHeight: 1 }}>
-                          <span style={{ fontSize: '30px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", letterSpacing: '-1px' }}>
-                            <span style={{ color: '#1B5E20' }}>FLASH</span>
-                            <span style={{ color: '#E65100' }}>KART</span>
-                          </span>
-                        </div>
-                        <div style={{
-                          display: 'inline-block', backgroundColor: '#1B5E20', color: '#FFFFFF',
-                          padding: '3px 20px', borderRadius: '20px', fontSize: '9px',
-                          fontWeight: 800, letterSpacing: '1.5px', marginTop: '5px', marginBottom: '3px'
-                        }}>
-                          FRESH VEGETABLES, BETTER LIFE
-                        </div>
-                        <div style={{ fontFamily: "'Dancing Script', cursive, serif", fontSize: '11px', color: '#2E7D32', fontStyle: 'italic', marginTop: '2px' }}>
-                          Fresh Vegetables Daily, Healthy Life Always
+        {/* Multi-page container */}
+        <div id="fk-invoice-document" style={{ width: '210mm', display: 'flex', flexDirection: 'column' }}>
+          {chunkedItems.map((pageItems, pageIndex) => {
+            const isLastPage = pageIndex === totalPages - 1;
+            return (
+              <div key={pageIndex} className="fk-invoice-page html2pdf__page-break" style={{
+                width: '210mm',
+                height: '296.5mm', // Almost exactly A4 height
+                backgroundColor: '#FFFFFF',
+                fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
+                color: '#1a1a1a',
+                boxShadow: '0 8px 40px rgba(0,0,0,0.35)',
+                marginBottom: isLastPage ? '0' : '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'hidden',
+                pageBreakAfter: isLastPage ? 'auto' : 'always'
+              }}>
+                
+                {/* ── HEADER (Every Page) ── */}
+                <div style={{ flexShrink: 0 }}>
+                  <div style={{ height: '8px', background: 'linear-gradient(90deg, #1B5E20, #2E7D32, #388E3C, #2E7D32, #1B5E20)' }} />
+                  <div style={{
+                    backgroundImage: 'url(/inv_header.png)', backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+                    padding: '12px 18px 0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: '110px', position: 'relative'
+                  }}>
+                    {/* Logo Area */}
+                    <div style={{ flex: 1, textAlign: 'center', zIndex: 2, position: 'relative', padding: '0 110px' }}>
+                      <div style={{ marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ width: '44px', height: '44px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <ShoppingCart size={24} color="#FFFFFF" />
                         </div>
                       </div>
-
-                      {/* Right: Owners & Contacts */}
+                      <div style={{ lineHeight: 1 }}>
+                        <span style={{ fontSize: '30px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", letterSpacing: '-1px' }}>
+                          <span style={{ color: '#1B5E20' }}>FLASH</span>
+                          <span style={{ color: '#E65100' }}>KART</span>
+                        </span>
+                      </div>
                       <div style={{
-                        position: 'absolute', right: '115px', top: '16px', zIndex: 3, textAlign: 'right', lineHeight: '1.6',
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '6px 10px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                        display: 'inline-block', backgroundColor: '#1B5E20', color: '#FFFFFF',
+                        padding: '3px 20px', borderRadius: '20px', fontSize: '10px',
+                        fontWeight: 800, letterSpacing: '1.5px', marginTop: '5px', marginBottom: '3px'
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end', marginBottom: '4px' }}>
-                          <div style={{ width: '18px', height: '18px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ color: '#fff', fontSize: '9px', fontWeight: 700 }}>P</span>
-                          </div>
-                          <div style={{ fontWeight: 800, color: '#1B5E20', fontSize: '10px', lineHeight: '1.3' }}>
-                            {(settings.owners || 'Kaushik Patel, Om Patel').split(',').map((o, i) => (
-                              <div key={i}>{o.trim().toUpperCase()}</div>
-                            ))}
-                          </div>
+                        FRESH VEGETABLES, BETTER LIFE
+                      </div>
+                    </div>
+                    {/* Contacts Area */}
+                    <div style={{
+                      position: 'absolute', right: '15px', top: '16px', zIndex: 3, textAlign: 'right', lineHeight: '1.6',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)', padding: '6px 10px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                        <div style={{ width: '18px', height: '18px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ color: '#fff', fontSize: '10px', fontWeight: 700 }}>P</span>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', justifyContent: 'flex-end' }}>
-                          <div style={{ width: '18px', height: '18px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px', flexShrink: 0 }}>
-                            <span style={{ color: '#fff', fontSize: '9px' }}>📞</span>
-                          </div>
-                          <div style={{ color: '#1B5E20', fontWeight: 700, fontSize: '10px', lineHeight: '1.5' }}>
-                            {(settings.contacts || '6352856495\n9773271029').split(',').map((c, i) => (
-                              <div key={i}>{c.trim()}</div>
-                            ))}
-                          </div>
+                        <div style={{ fontWeight: 800, color: '#1B5E20', fontSize: '11px', lineHeight: '1.3' }}>
+                          {(settings.owners || 'Kaushik Patel, Om Patel').split(',').map((o, i) => (
+                            <div key={i}>{o.trim().toUpperCase()}</div>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '5px', justifyContent: 'flex-end' }}>
+                        <div style={{ width: '18px', height: '18px', backgroundColor: '#1B5E20', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px', flexShrink: 0 }}>
+                          <span style={{ color: '#fff', fontSize: '10px' }}>📞</span>
+                        </div>
+                        <div style={{ color: '#1B5E20', fontWeight: 700, fontSize: '11px', lineHeight: '1.5' }}>
+                          {(settings.contacts || '6352856495\n9773271029').split(',').map((c, i) => (
+                            <div key={i}>{c.trim()}</div>
+                          ))}
                         </div>
                       </div>
                     </div>
-                    <svg viewBox="0 0 800 24" style={{ display: 'block', width: '100%', height: '24px' }} preserveAspectRatio="none">
-                      <path d="M0,12 C100,24 200,0 300,12 C400,24 500,0 600,12 C700,24 800,0 800,12 L800,24 L0,24 Z" fill="#2E7D32" />
-                    </svg>
                   </div>
-
-                  {/* ── BILL/INVOICE TITLE ─────────────────────────────────── */}
-                  <div style={{ textAlign: 'center', margin: '10px 0 8px' }}>
+                  <svg viewBox="0 0 800 24" style={{ display: 'block', width: '100%', height: '24px' }} preserveAspectRatio="none">
+                    <path d="M0,12 C100,24 200,0 300,12 C400,24 500,0 600,12 C700,24 800,0 800,12 L800,24 L0,24 Z" fill="#2E7D32" />
+                  </svg>
+                  
+                  <div style={{ textAlign: 'center', margin: '6px 0 4px' }}>
                     <div style={{
                       display: 'inline-block', background: 'linear-gradient(90deg, #1B5E20, #2E7D32)', color: '#FFFFFF',
-                      padding: '6px 40px', borderRadius: '6px', fontSize: '13px', fontWeight: 800, letterSpacing: '2px'
+                      padding: '4px 40px', borderRadius: '6px', fontSize: '14px', fontWeight: 800, letterSpacing: '2px'
                     }}>
                       BILL / INVOICE
                     </div>
                   </div>
 
-                  {/* ── CUSTOMER INFO ROW ──────────────────────────────────── */}
-                  <div style={{ padding: '8px 20px 6px', display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '0 30px' }}>
-                    <div style={{ fontSize: '10.5px' }}>
+                  <div style={{ padding: '4px 20px 8px', display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '0 30px' }}>
+                    <div style={{ fontSize: '11px' }}>
                       <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'flex-end' }}>
                         <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Customer Name :</span>
                         <div style={{ flex: 1, borderBottom: '1px solid #333', paddingBottom: '1px', minWidth: '120px', fontWeight: 600 }}>
@@ -318,7 +293,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                         </div>
                       </div>
                       {invoice.customer_mobile && (
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', alignItems: 'flex-end' }}>
                           <span style={{ fontWeight: 700 }}>Mobile :</span>
                           <div style={{ borderBottom: '1px solid #333', paddingBottom: '1px', paddingLeft: '4px' }}>
                             {invoice.customer_mobile}
@@ -326,7 +301,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                         </div>
                       )}
                     </div>
-                    <div style={{ fontSize: '10.5px' }}>
+                    <div style={{ fontSize: '11px' }}>
                       <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'flex-end' }}>
                         <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Bill No. :</span>
                         <div style={{ flex: 1, borderBottom: '1px solid #333', paddingBottom: '1px', fontWeight: 700, color: '#E65100' }}>
@@ -341,165 +316,154 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* To ensure spacing before headers */}
-                  <div style={{ height: '6px' }}></div>
-                </td>
-              </tr>
-              
-              {/* TABLE COLUMN HEADERS */}
-              <tr style={{ background: 'linear-gradient(90deg, #1B5E20, #2E7D32)', color: '#FFFFFF' }}>
-                {[
-                  { label: 'SR. NO.', align: 'center', w: '9%' },
-                  { label: 'ITEM', align: 'left', w: '30%' },
-                  { label: 'QUANTITY\n(Kg)', align: 'center', w: '15%' },
-                  { label: 'RATE PER KG\n(₹)', align: 'center', w: '16%' },
-                  { label: 'AMOUNT\n(₹)', align: 'center', w: '16%' },
-                  { label: 'REMARKS', align: 'center', w: '14%' }
-                ].map((col, i) => (
-                  <th key={i} style={{
-                    width: col.w,
-                    padding: '6px 5px',
-                    fontSize: '9px',
-                    fontWeight: 800,
-                    textAlign: col.align,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.3px',
-                    border: '1px solid #1B5E20',
-                    whiteSpace: 'pre-line',
-                    lineHeight: '1.3'
-                  }}>
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+                </div>
 
-            <tbody style={{ display: 'table-row-group' }}>
-              {displayItems.map((item, idx) => (
-                <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F4FAF4', pageBreakInside: 'avoid' }}>
-                  <td style={tdStyle('center', '#555')}>{idx + 1}.</td>
-                  <td style={tdStyle('left', '#000', 700)}>{item?.product_name || ''}</td>
-                  <td style={tdStyle('center')}>{item ? parseFloat(item.quantity).toFixed(2) : ''}</td>
-                  <td style={tdStyle('center')}>{item ? '₹' + parseFloat(item.rate).toFixed(2) : ''}</td>
-                  <td style={tdStyle('center', '#1a1a1a', 700)}>{item ? '₹' + parseFloat(item.amount).toFixed(2) : ''}</td>
-                  <td style={tdStyle('center', '#555')}>{item?.remarks || ''}</td>
-                </tr>
-              ))}
-            </tbody>
+                {/* ── TABLE (Every Page) ── */}
+                <div style={{ padding: '0 20px', flex: 1 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                    <thead>
+                      <tr style={{ background: 'linear-gradient(90deg, #1B5E20, #2E7D32)', color: '#FFFFFF' }}>
+                        {[
+                          { label: 'SR. NO.', align: 'center', w: '9%' },
+                          { label: 'ITEM', align: 'left', w: '30%' },
+                          { label: 'QTY (Kg)', align: 'center', w: '13%' },
+                          { label: 'RATE (₹)', align: 'center', w: '16%' },
+                          { label: 'AMOUNT (₹)', align: 'center', w: '16%' },
+                          { label: 'REMARKS', align: 'center', w: '16%' }
+                        ].map((col, i) => (
+                          <th key={i} style={{
+                            width: col.w,
+                            padding: '6px 5px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            textAlign: col.align,
+                            border: '1px solid #1B5E20',
+                          }}>
+                            {col.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.map((item, idx) => {
+                        const globalIdx = pageIndex * ITEMS_PER_PAGE + idx + 1;
+                        return (
+                          <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F4FAF4' }}>
+                            <td style={tdStyle('center', '#555')}>{globalIdx}.</td>
+                            <td style={tdStyle('left', '#000', 700)}>{item?.product_name || ''}</td>
+                            <td style={tdStyle('center')}>{item ? parseFloat(item.quantity).toFixed(2) : ''}</td>
+                            <td style={tdStyle('center')}>{item ? '₹' + parseFloat(item.rate).toFixed(2) : ''}</td>
+                            <td style={tdStyle('center', '#1a1a1a', 700)}>{item ? '₹' + parseFloat(item.amount).toFixed(2) : ''}</td>
+                            <td style={tdStyle('center', '#555')}>{item?.remarks || ''}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* TOTALS & TERMS (Avoid breaking) */}
-            <tbody style={{ display: 'table-row-group' }}>
-              <tr style={{ pageBreakInside: 'avoid' }}>
-                <td colSpan={6} style={{ padding: '0', border: 'none' }}>
+                {/* ── FOOTER & TOTALS SECTION ── */}
+                <div style={{ marginTop: 'auto', flexShrink: 0 }}>
                   
-                  {/* ── TOTALS ────────────────────────────────── */}
-                  <div style={{ padding: '6px 20px', display: 'flex', gap: '12px', alignItems: 'flex-start', marginTop: '2px' }}>
-                    <div style={{ flex: 1.1 }}>
-                      <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '6px 8px', minHeight: '45px', backgroundColor: '#FAFAFA' }}>
-                        <div style={{ fontSize: '8.5px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Amount in Words :</div>
-                        <div style={{ fontSize: '8.5px', color: '#1B5E20', fontWeight: 600, lineHeight: '1.4' }}>
-                          {amountInWords}
+                  {isLastPage && (
+                    <div style={{ padding: '0 20px' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1.1 }}>
+                          <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '6px 8px', minHeight: '45px', backgroundColor: '#FAFAFA' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Amount in Words :</div>
+                            <div style={{ fontSize: '11px', color: '#1B5E20', fontWeight: 600, lineHeight: '1.4' }}>
+                              {amountInWords}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ flex: 1.1 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <tbody>
+                              <tr>
+                                <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>TOTAL WEIGHT (Kg)</td>
+                                <td style={summaryValCell('#E8F5E9', '#1B5E20', false, true)}>
+                                  {totalWeight.toFixed(2)}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>TOTAL AMOUNT (₹)</td>
+                                <td style={summaryValCell('#E8F5E9', '#1B5E20', false, true)}>
+                                  {subtotal > 0 ? '₹ ' + subtotal.toFixed(2) : ''}
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style={{ ...summaryLabelCell('#1B5E20', '#FFFFFF'), fontSize: '12px', fontWeight: 900, letterSpacing: '0.5px' }}>GRAND TOTAL</td>
+                                <td style={{ ...summaryValCell('#1B5E20', '#FFFFFF', true), fontSize: '14px', fontWeight: 900 }}>
+                                  ₹ {finalBillTotal.toFixed(2)}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '11px', color: '#444', lineHeight: '1.4', marginTop: '8px', borderTop: '1px dashed #E0E0E0', paddingTop: '4px' }}>
+                        <div style={{ color: '#2E7D32', fontWeight: 800, fontSize: '11px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Terms & Conditions
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>1.</span><span>Please check the quantity and quality of goods at the time of delivery.</span></div>
+                          <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>2.</span><span>Any issue or shortage must be reported immediately upon delivery.</span></div>
+                          <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>3.</span><span>Report any issue immediately to our team.</span></div>
+                          <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>4.</span><span>FLASHKART will take responsibility for genuine delivery-related issues reported at the time of delivery.</span></div>
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    <div style={{ flex: 1.1 }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px' }}>
-                        <tbody>
-                          <tr>
-                            <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>TOTAL WEIGHT (Kg)</td>
-                            <td style={summaryValCell('#E8F5E9', '#1B5E20', false, true)}>
-                              {totalWeight.toFixed(2)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>TOTAL AMOUNT (₹)</td>
-                            <td style={summaryValCell('#E8F5E9', '#1B5E20', false, true)}>
-                              {subtotal > 0 ? '₹ ' + subtotal.toFixed(2) : ''}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ ...summaryLabelCell('#1B5E20', '#FFFFFF'), fontSize: '12px', fontWeight: 900, letterSpacing: '0.5px' }}>GRAND TOTAL</td>
-                            <td style={{ ...summaryValCell('#1B5E20', '#FFFFFF', true), fontSize: '13px', fontWeight: 900 }}>
-                              ₹ {finalBillTotal.toFixed(2)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* ── TERMS & CONDITIONS ─────────────────────────────────── */}
-                  <div style={{ padding: '5px 20px', fontSize: '8.5px', color: '#444', lineHeight: '1.4', marginTop: '5px', borderTop: '1px dashed #E0E0E0' }}>
-                    <div style={{ color: '#2E7D32', fontWeight: 800, fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Terms & Conditions
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>1.</span><span>Please check the quantity and quality of goods at the time of delivery.</span></div>
-                      <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>2.</span><span>Any issue or shortage must be reported immediately upon delivery.</span></div>
-                      <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>3.</span><span>Report any issue immediately to our team.</span></div>
-                      <div style={{ display: 'flex', gap: '6px' }}><span style={{ color: '#2E7D32', fontWeight: 800 }}>4.</span><span>FLASHKART will take responsibility for genuine delivery-related issues reported at the time of delivery.</span></div>
-                    </div>
-                  </div>
-
-                </td>
-              </tr>
-            </tbody>
-
-            {/* ── REPEATING FOOTER ─────────────────────────────────────── */}
-            <tfoot style={{ display: 'table-footer-group' }}>
-              <tr>
-                <td colSpan={6} style={{ padding: '0', border: 'none' }}>
-                  
-                  {/* Signature and Thank You */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '10px 40px 10px 40px' }}>
-                    {/* Left: Thank You */}
+                  {/* Signature and Thank You (Every Page) */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '5px 40px 10px 40px' }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: '26px', color: '#2E7D32', fontWeight: 700, lineHeight: 1.1 }}>
                         Thank You!
                       </div>
-                      <div style={{ fontSize: '9px', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '2px' }}>
+                      <div style={{ fontSize: '11px', color: '#555', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '2px' }}>
                         <span style={{ color: '#2E7D32' }}>🌿</span> Visit Again <span style={{ color: '#2E7D32' }}>🌿</span>
                       </div>
                     </div>
-
-                    {/* Right: Signature */}
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#555', paddingBottom: '10px' }}>
+                       Page {pageIndex + 1} of {totalPages}
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <img src="/final_stamp.png" alt="Authorized Stamp" style={{ width: '100px', height: '100px', transform: 'rotate(-5deg)', mixBlendMode: 'multiply', opacity: 0.95, pointerEvents: 'none', objectFit: 'contain' }} />
-                      <div style={{ padding: '4px 0 0 0', borderTop: '1.5px solid #333', fontSize: '10px', color: '#111', fontWeight: 800, minWidth: '150px', textAlign: 'center' }}>
+                      <img src="/final_stamp.png" alt="Authorized Stamp" style={{ width: '80px', height: '80px', transform: 'rotate(-5deg)', mixBlendMode: 'multiply', opacity: 0.95, pointerEvents: 'none', objectFit: 'contain' }} />
+                      <div style={{ padding: '4px 0 0 0', borderTop: '1.5px solid #333', fontSize: '11px', color: '#111', fontWeight: 800, minWidth: '150px', textAlign: 'center' }}>
                         Authorized Signature
                       </div>
                     </div>
                   </div>
 
-                  {/* ── FOOTER BAR ─────────────────────────────────────────── */}
+                  {/* FOOTER BAR */}
                   <div style={{
                     background: 'linear-gradient(90deg, #1B5E20, #2E7D32, #1B5E20)',
-                    color: '#FFFFFF', textAlign: 'center', padding: '7px 12px', fontSize: '10px', fontWeight: 700,
+                    color: '#FFFFFF', textAlign: 'center', padding: '8px 12px', fontSize: '11px', fontWeight: 700,
                     letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                   }}>
-                    <span>📍</span> Thank You For Your Business! <span>🥦</span>
+                    <span>📍</span> Thank You For Shopping With FlashKart <span>🥦</span>
                   </div>
+                </div>
 
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>
   );
 }
+
 // ─── Style Helpers ────────────────────────────────────────────────────────────
 const tdStyle = (align = 'center', color = '#222', fontWeight = 400) => ({
-  padding: '5px 5px',
-  fontSize: '10px',
+  padding: '4px 5px',
+  fontSize: '11px',
   textAlign: align,
   color,
   fontWeight,
   border: '1px solid #D0E8D0',
-  minHeight: '20px',
   height: '22px'
 });
 
@@ -508,7 +472,7 @@ const summaryLabelCell = (bg, color, bordered = false) => ({
   backgroundColor: bg,
   color,
   fontWeight: 800,
-  fontSize: '9.5px',
+  fontSize: '10px',
   textTransform: 'uppercase',
   letterSpacing: '0.3px',
   border: bordered ? '1px solid #E0E0E0' : '1px solid #2E7D32',
@@ -520,7 +484,7 @@ const summaryValCell = (bg, color, isGrand = false, isGreen = false) => ({
   backgroundColor: bg,
   color,
   fontWeight: isGrand ? 900 : 700,
-  fontSize: isGrand ? '12px' : '10px',
+  fontSize: isGrand ? '12px' : '11px',
   textAlign: 'right',
   border: isGreen ? '1px solid #2E7D32' : '1px solid #E0E0E0',
   minWidth: '90px'
