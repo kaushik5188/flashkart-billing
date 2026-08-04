@@ -321,15 +321,15 @@ export default function Purchases({ token, API_URL }) {
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '1rem', alignItems: 'end', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-light)' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Vegetable Name *</label>
-                  <input type="text" name="vegetable_name" className="form-control" placeholder="e.g. Potato" value={currentItem.vegetable_name} onChange={handleItemChange} />
+                  <input type="text" name="vegetable_name" className="form-control" placeholder="e.g. Potato" value={currentItem.vegetable_name} onChange={handleItemChange} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Total Amount Paid (₹) *</label>
-                  <input type="number" step="0.01" name="total_amount" className="form-control" placeholder="e.g. 800" value={currentItem.total_amount} onChange={handleItemChange} />
+                  <input type="number" step="0.01" name="total_amount" className="form-control" placeholder="e.g. 800" value={currentItem.total_amount} onChange={handleItemChange} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Total Weight (KG) *</label>
-                  <input type="number" step="0.01" name="quantity" className="form-control" placeholder="e.g. 40" value={currentItem.quantity} onChange={handleItemChange} />
+                  <input type="number" step="0.01" name="quantity" className="form-control" placeholder="e.g. 40" value={currentItem.quantity} onChange={handleItemChange} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(); } }} />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: '0.65rem' }}>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Auto Calculated</div>

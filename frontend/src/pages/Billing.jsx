@@ -10,7 +10,7 @@ import {
 
 // ---- Autocomplete Vegetable Input Component ----
 // Allows free-text typing while also suggesting existing catalog items
-function VegInput({ value, onChange, onSuggestionSelect, products, placeholder }) {
+function VegInput({ value, onChange, onSuggestionSelect, products, placeholder, onKeyDown }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || '');
   const wrapperRef = useRef(null);
@@ -60,6 +60,7 @@ function VegInput({ value, onChange, onSuggestionSelect, products, placeholder }
         onChange={handleChange}
         onFocus={() => setOpen(true)}
         autoComplete="off"
+        onKeyDown={onKeyDown}
         style={{ paddingRight: '28px' }}
       />
       <ChevronDown
@@ -459,6 +460,7 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
                 placeholder="e.g. Potato, Karela, Drumstick..."
                 onChange={(name, pid, unit) => handleItemNameChange(idx, name, pid, unit)}
                 onSuggestionSelect={(prod) => handleItemSuggestionSelect(idx, prod)}
+                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBillItemRow(); } }}
               />
 
               {/* Quantity */}
@@ -467,9 +469,7 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
                   type="number"
                   step="0.1"
                   min="0"
-                  className="form-control"
-                  placeholder="Qty"
-                  value={item.quantity}
+                  className="form-control" placeholder="Qty" value={item.quantity} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBillItemRow(); } }}
                   onChange={(e) => handleItemFieldChange(idx, 'quantity', e.target.value)}
                   required
                 />
@@ -484,9 +484,7 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
                   type="number"
                   step="0.01"
                   min="0"
-                  className="form-control"
-                  placeholder="Rate"
-                  value={item.rate}
+                  className="form-control" placeholder="Rate" value={item.rate} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBillItemRow(); } }}
                   onChange={(e) => handleItemFieldChange(idx, 'rate', e.target.value)}
                   required
                 />
@@ -501,9 +499,7 @@ export default function Billing({ token, API_URL, setInvoiceId, viewInvoiceId, s
               <div style={{ flex: 1.5 }}>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="Remarks"
-                  value={item.remarks}
+                  className="form-control" placeholder="Remarks" value={item.remarks} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBillItemRow(); } }}
                   onChange={(e) => handleItemFieldChange(idx, 'remarks', e.target.value)}
                 />
               </div>
