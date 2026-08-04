@@ -237,6 +237,9 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                       }}>
                         FRESH VEGETABLES, BETTER LIFE
                       </div>
+                      <div style={{ fontFamily: "'Dancing Script', cursive, serif", fontSize: '12px', color: '#2E7D32', fontStyle: 'italic', marginTop: '2px', fontWeight: 600 }}>
+                        Fresh Vegetables Daily, Healthy Life Always
+                      </div>
                     </div>
                     {/* Contacts Area */}
                     <div style={{
