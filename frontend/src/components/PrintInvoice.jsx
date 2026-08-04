@@ -372,7 +372,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                     <div style={{ padding: '0 20px' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1.1 }}>
-                          <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '6px 8px', minHeight: '45px', backgroundColor: '#FAFAFA' }}>
+                          <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '4px 6px', minHeight: '35px', backgroundColor: '#FAFAFA' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Amount in Words :</div>
                             <div style={{ fontSize: '11px', color: '#1B5E20', fontWeight: 600, lineHeight: '1.4' }}>
                               {amountInWords}
@@ -420,7 +420,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                   )}
 
                   {/* Signature and Thank You (Every Page) */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '5px 40px 10px 40px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '2px 40px 5px 40px' }}>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive", fontSize: '26px', color: '#2E7D32', fontWeight: 700, lineHeight: 1.1 }}>
                         Thank You!
@@ -433,7 +433,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                        Page {pageIndex + 1} of {totalPages}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <img src="/final_stamp.png" alt="Authorized Stamp" style={{ width: '80px', height: '80px', transform: 'rotate(-5deg)', mixBlendMode: 'multiply', opacity: 0.95, pointerEvents: 'none', objectFit: 'contain' }} />
+                      <img src="/final_stamp.png" alt="Authorized Stamp" style={{ width: '65px', height: '65px', transform: 'rotate(-5deg)', mixBlendMode: 'multiply', opacity: 0.95, pointerEvents: 'none', objectFit: 'contain' }} />
                       <div style={{ padding: '4px 0 0 0', borderTop: '1.5px solid #333', fontSize: '11px', color: '#111', fontWeight: 800, minWidth: '150px', textAlign: 'center' }}>
                         Authorized Signature
                       </div>
@@ -461,13 +461,13 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
 
 // ─── Style Helpers ────────────────────────────────────────────────────────────
 const tdStyle = (align = 'center', color = '#222', fontWeight = 400) => ({
-  padding: '4px 5px',
-  fontSize: '11px',
+  padding: '3px 4px',
+  fontSize: '10px',
   textAlign: align,
   color,
   fontWeight,
   border: '1px solid #D0E8D0',
-  height: '22px'
+  height: '20px'
 });
 
 const summaryLabelCell = (bg, color, bordered = false) => ({
