@@ -32,6 +32,7 @@ function numberToWords(num) {
 export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
   const [invoice, setInvoice] = useState(null);
   const [items, setItems] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,6 +54,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
       const settData = await settRes.json();
       setInvoice(invData.invoice);
       setItems(invData.items);
+      setPayments(invData.payments || []);
       setSettings(settData);
     } catch (err) {
       setError(err.message);
@@ -372,12 +374,31 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                     <div style={{ padding: '0 20px' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1.1 }}>
-                          <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '4px 6px', minHeight: '35px', backgroundColor: '#FAFAFA' }}>
+                          <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '4px 6px', minHeight: '35px', backgroundColor: '#FAFAFA', marginBottom: '8px' }}>
                             <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Amount in Words :</div>
                             <div style={{ fontSize: '11px', color: '#1B5E20', fontWeight: 600, lineHeight: '1.4' }}>
                               {amountInWords}
                             </div>
                           </div>
+                          {invoice.notes && (
+                            <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '4px 6px', backgroundColor: '#FAFAFA', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Invoice Note :</div>
+                              <div style={{ fontSize: '11px', color: '#555', lineHeight: '1.4' }}>{invoice.notes}</div>
+                            </div>
+                          )}
+                          {payments && payments.length > 0 && (
+                            <div style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '4px 6px', backgroundColor: '#FAFAFA' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '3px', color: '#333' }}>Payment Details :</div>
+                              <div style={{ fontSize: '10px', color: '#555', lineHeight: '1.4' }}>
+                                {payments.map((p, i) => (
+                                  <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '2px' }}>
+                                    <span><strong>{p.payment_date}:</strong> ₹{p.amount_received} via {p.payment_method}</span>
+                                    {p.reference_number && <span>(Ref/Check: {p.reference_number})</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div style={{ flex: 1.1 }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
