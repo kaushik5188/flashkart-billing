@@ -355,16 +355,27 @@ async function initSchema() {
   try {
     await query("ALTER TABLE purchase_invoices ADD COLUMN packaging_charge REAL DEFAULT 0");
     console.log("Migration: Added packaging_charge to purchase_invoices");
-  } catch (err) {
-    // Ignore
-  }
+  } catch (err) {}
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN transport_charge REAL DEFAULT 0");
+    console.log("Migration: Added transport_charge to purchase_invoices");
+  } catch (err) {}
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN labour_charge REAL DEFAULT 0");
+    console.log("Migration: Added labour_charge to purchase_invoices");
+  } catch (err) {}
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN other_charges REAL DEFAULT 0");
+    console.log("Migration: Added other_charges to purchase_invoices");
+  } catch (err) {}
 
   try {
     await query("ALTER TABLE purchase_invoices ADD COLUMN discount REAL DEFAULT 0");
     console.log("Migration: Added discount to purchase_invoices");
-  } catch (err) {
-    // Ignore
-  }
+  } catch (err) {}
 
   try {
     await query("ALTER TABLE invoices ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Unpaid'");

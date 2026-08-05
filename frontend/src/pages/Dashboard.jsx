@@ -147,6 +147,7 @@ export default function Dashboard({ setView, token, API_URL, setCustomerId }) {
       {/* KPI CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <StatCard onClick={() => handleCardClick('sales', "Today's Sales", 'today')} title="Today's Sales" value={fmt(stats?.salesToday)} icon={DollarSign} color="var(--color-green)" lightColor="var(--color-green-light)" />
+        <StatCard onClick={() => handleCardClick('payments', "Today's Collections", 'today')} title="Today's Collections" value={fmt(stats?.collectionsToday)} icon={CreditCard} color="#0288D1" lightColor="#E1F5FE" />
         <StatCard onClick={() => handleCardClick('purchases', "Today's Purchase", 'today')} title="Today's Purchase" value={fmt(stats?.purchasesToday)} icon={ShoppingCart} color="var(--color-orange)" lightColor="var(--color-orange-light)" />
         <StatCard onClick={() => handleCardClick('business_expenses', "Today's Expenses", 'today')} title="Today's Expenses" value={fmt(stats?.expensesToday)} icon={ArrowDown} color="var(--color-danger)" lightColor="#FEE2E2" />
         <StatCard onClick={() => handleCardClick('profit', "Today's Profit", 'today')} title="Today's Profit" value={fmt(stats?.profitToday)} icon={TrendingUp} color="#6A1B9A" lightColor="#F3E5F5" />

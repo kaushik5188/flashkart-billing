@@ -23,7 +23,15 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const expensesToday = purchasesToday + businessExpensesToday;
 
     // 4. Today's Profit Calculation (Sales - Expenses)
-    const profitToday = salesToday - expensesToday;
+    // First, find discount given during payment collection today
+    const todayPayDisc = await query('SELECT SUM(discount) as total FROM payments WHERE payment_date = ?', [todayStr]);
+    const paymentDiscountToday = todayPayDisc[0].total || 0;
+    
+    // Also find today's total collections
+    const todayColl = await query('SELECT SUM(amount_received) as total FROM payments WHERE payment_date = ?', [todayStr]);
+    const collectionsToday = todayColl[0].total || 0;
+
+    const profitToday = salesToday - expensesToday - paymentDiscountToday;
 
     // 4b. Monthly stats calculation
     const monthSalesQ = await query('SELECT SUM(grand_total) as total FROM invoices WHERE invoice_date LIKE ?', [currentMonthStr]);
@@ -36,7 +44,10 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
     const monthlyBusinessExpenses = monthExpQ[0].total || 0;
     const monthlyExpenses = monthPurchases + monthlyBusinessExpenses;
 
-    const monthlyProfit = monthSales - monthlyExpenses;
+    const monthPayDisc = await query('SELECT SUM(discount) as total FROM payments WHERE payment_date LIKE ?', [currentMonthStr]);
+    const paymentDiscountMonthly = monthPayDisc[0].total || 0;
+
+    const monthlyProfit = monthSales - monthlyExpenses - paymentDiscountMonthly;
 
     // 5. Current Stock Value
     const stockValQuery = await query('SELECT SUM(stock_quantity * average_purchase_rate) as value FROM products WHERE stock_quantity > 0');
@@ -80,6 +91,7 @@ router.get('/dashboard-stats', verifyToken, async (req, res) => {
       salesToday,
       purchasesToday,
       expensesToday,
+      collectionsToday,
       profitToday,
       monthlyExpenses,
       monthlyProfit,
