@@ -278,6 +278,58 @@ router.get('/receivables-report', verifyToken, async (req, res) => {
 });
 
 
+// GET Payments Collection Report
+router.get('/payments-report', verifyToken, async (req, res) => {
+  const { startDate, endDate } = req.query;
+  try {
+    let sql = `
+      SELECT p.*, c.name as customer_name, i.bill_number 
+      FROM payments p
+      JOIN customers c ON p.customer_id = c.id
+      LEFT JOIN invoices i ON p.bill_id = i.id
+      WHERE 1=1
+    `;
+    let params = [];
+    if (startDate) { sql += ' AND p.payment_date >= ?'; params.push(startDate); }
+    if (endDate) { sql += ' AND p.payment_date <= ?'; params.push(endDate); }
+    sql += ' ORDER BY p.payment_date DESC';
+    const list = await query(sql, params);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching payments report.' });
+  }
+});
+
+// GET Discounts Report
+router.get('/discounts-report', verifyToken, async (req, res) => {
+  const { startDate, endDate } = req.query;
+  try {
+    let sql = `
+      SELECT i.id, i.bill_number, i.invoice_date as date, c.name as customer_name, i.grand_total, i.discount, 'Bill Discount' as type
+      FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.discount > 0
+    `;
+    let params = [];
+    if (startDate) { sql += ' AND i.invoice_date >= ?'; params.push(startDate); }
+    if (endDate) { sql += ' AND i.invoice_date <= ?'; params.push(endDate); }
+    
+    let sqlPay = `
+      SELECT p.id, i.bill_number, p.payment_date as date, c.name as customer_name, p.amount_received as grand_total, p.discount, 'Payment Discount' as type
+      FROM payments p JOIN customers c ON p.customer_id = c.id LEFT JOIN invoices i ON p.bill_id = i.id WHERE p.discount > 0
+    `;
+    let payParams = [];
+    if (startDate) { sqlPay += ' AND p.payment_date >= ?'; payParams.push(startDate); }
+    if (endDate) { sqlPay += ' AND p.payment_date <= ?'; payParams.push(endDate); }
+
+    const bills = await query(sql, params);
+    const pays = await query(sqlPay, payParams);
+    
+    const list = [...bills, ...pays].sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching discounts report.' });
+  }
+});
+
 // GET Dashboard Drill-Down data
 router.get('/dashboard-drilldown', verifyToken, async (req, res) => {
   const { type, startDate, endDate } = req.query;

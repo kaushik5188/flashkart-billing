@@ -8,9 +8,12 @@ import {
   Calendar,
   FileSpreadsheet,
   Printer,
+  Printer,
   ShoppingCart,
   Wallet,
-  Receipt
+  Receipt,
+  CreditCard,
+  Percent
 } from 'lucide-react';
 
 export default function Reports({ token, API_URL, setCustomerId, setView }) {
@@ -49,6 +52,10 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
         url = `${API_URL}/api/reports/customers-sales-report?startDate=${startDate}&endDate=${endDate}`;
       } else if (activeReport === 'receivables') {
         url = `${API_URL}/api/reports/receivables-report`;
+      } else if (activeReport === 'payments') {
+        url = `${API_URL}/api/reports/payments-report?startDate=${startDate}&endDate=${endDate}`;
+      } else if (activeReport === 'discounts') {
+        url = `${API_URL}/api/reports/discounts-report?startDate=${startDate}&endDate=${endDate}`;
       }
 
       const res = await fetch(url, {
@@ -89,6 +96,10 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
       reportData.forEach(r => { salesTotal += r.total_spent || 0; profitTotal += r.outstanding_balance || 0; });
     } else if (activeReport === 'receivables') {
       reportData.forEach(r => { salesTotal += r.outstanding_balance; });
+    } else if (activeReport === 'payments') {
+      reportData.forEach(r => { salesTotal += r.amount_received; profitTotal += (r.discount || 0); });
+    } else if (activeReport === 'discounts') {
+      reportData.forEach(r => { salesTotal += r.discount; });
     }
 
     return { salesTotal, profitTotal, quantityTotal, count };
@@ -178,8 +189,28 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
             }}
           >
             <tab.icon size={16} /> {tab.label}
-          </button>
-        ))}
+      <div className="glass-card" style={{ padding: '0.5rem', display: 'flex', gap: '5px', overflowX: 'auto', marginBottom: '1.5rem', whiteSpace: 'nowrap' }}>
+        <button className={`btn ${activeReport === 'sales' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('sales')}>
+          <BarChart3 size={15}/> Sales Summary
+        </button>
+        <button className={`btn ${activeReport === 'products' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('products')}>
+          <ShoppingCart size={15}/> Products Analysis
+        </button>
+        <button className={`btn ${activeReport === 'customers' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('customers')}>
+          <Users size={15}/> Customer Sales
+        </button>
+        <button className={`btn ${activeReport === 'receivables' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('receivables')}>
+          <AlertTriangle size={15}/> Outstanding (Receivables)
+        </button>
+        <button className={`btn ${activeReport === 'payments' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('payments')}>
+          <CreditCard size={15}/> Payments Collection
+        </button>
+        <button className={`btn ${activeReport === 'discounts' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('discounts')}>
+          <Percent size={15}/> Discounts Given
+        </button>
+        <button className={`btn ${activeReport === 'purchases' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('purchases')}>
+          <Wallet size={15}/> Purchases/Expenses
+        </button>
       </div>
 
       {/* Date Filters */}
@@ -243,9 +274,27 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
             <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{metrics.quantityTotal.toFixed(1)}</div>
           </div>
         )}
+
+        {activeReport === 'receivables' && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Receivables</span>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)' }}>{fmt(metrics.salesTotal)}</h3>
+          </div>
+        )}
+        {activeReport === 'payments' && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Received</span>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-green)' }}>{fmt(metrics.salesTotal)}</h3>
+          </div>
+        )}
+        {activeReport === 'discounts' && (
+          <div className="card stat-card" style={{ padding: '1.25rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total Discounts</span>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-orange)' }}>{fmt(metrics.salesTotal)}</h3>
+          </div>
+        )}
       </div>
 
-      {/* Data Table */}
       <div className="card">
         <div className="table-responsive">
           <table className="table" style={{ fontSize: '0.9rem' }}>
@@ -296,9 +345,30 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
               {activeReport === 'receivables' && (
                 <tr>
                   <th>Customer Name</th>
-                  <th>Contact Info</th>
-                  <th>Last Purchase</th>
-                  <th style={{ textAlign: 'right', color: 'var(--color-danger)' }}>Pending Amount</th>
+                  <th>Mobile</th>
+                  <th>Place</th>
+                  <th>Last Activity Date</th>
+                  <th style={{ textAlign: 'right' }}>Outstanding Amount</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
+                </tr>
+              )}
+              {activeReport === 'payments' && (
+                <tr>
+                  <th>Date</th>
+                  <th>Bill / Ref</th>
+                  <th>Customer</th>
+                  <th>Method</th>
+                  <th style={{ textAlign: 'right' }}>Amount Received</th>
+                  <th style={{ textAlign: 'right' }}>Discount</th>
+                </tr>
+              )}
+              {activeReport === 'discounts' && (
+                <tr>
+                  <th>Date</th>
+                  <th>Source</th>
+                  <th>Customer</th>
+                  <th>Bill Amount</th>
+                  <th style={{ textAlign: 'right' }}>Discount Given</th>
                 </tr>
               )}
             </thead>
@@ -310,79 +380,101 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
               ) : reportData.length === 0 ? (
                 <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No records found for the selected period.</td></tr>
               ) : (
-                reportData.map((row, idx) => (
+                reportData.map((item, idx) => (
                   <tr key={idx} className="hover-row">
-                    {/* SALES */}
                     {activeReport === 'sales' && (
                       <>
-                        <td>{row.invoice_date}</td>
-                        <td style={{ fontWeight: 600 }}>{row.bill_number}</td>
-                        <td>{row.customer_name}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.grand_total)}</td>
-                        <td style={{ textAlign: 'right', color: 'var(--color-success)' }}>{fmt(row.paid_amount)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(row.net_profit)}</td>
+                        <td>{item.invoice_date}</td>
+                        <td style={{ fontWeight: 600 }}>{item.bill_number}</td>
+                        <td>{item.customer_name}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(item.grand_total)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--color-success)' }}>{fmt(item.paid_amount)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(item.net_profit)}</td>
                       </>
                     )}
-
-                    {/* PRODUCTS */}
                     {activeReport === 'products' && (
                       <>
-                        <td style={{ fontWeight: 600 }}>{row.product_name}</td>
-                        <td><span className="badge badge-success">{row.category}</span></td>
-                        <td style={{ textAlign: 'right' }}>{row.total_qty} {row.unit}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.total_revenue)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(row.total_profit)}</td>
+                        <td style={{ fontWeight: 600 }}>{item.product_name}</td>
+                        <td><span className="badge badge-success">{item.category}</span></td>
+                        <td style={{ textAlign: 'right' }}>{item.total_qty} {item.unit}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(item.total_revenue)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#6A1B9A' }}>{fmt(item.total_profit)}</td>
                       </>
                     )}
-
-                    {/* PURCHASES */}
                     {activeReport === 'purchases' && (
                       <>
-                        <td>{row.purchase_date}</td>
-                        <td style={{ fontWeight: 600 }}>{row.supplier_name || '-'}</td>
-                        <td>{row.product_name || '-'}</td>
-                        <td style={{ textAlign: 'right' }}>{row.quantity} @ ₹{row.purchase_rate}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-orange-dark)' }}>{fmt(row.grand_total)}</td>
+                        <td>{item.purchase_date}</td>
+                        <td style={{ fontWeight: 600 }}>{item.supplier_name || '-'}</td>
+                        <td>{item.product_name || '-'}</td>
+                        <td style={{ textAlign: 'right' }}>{item.quantity} @ ₹{item.purchase_rate}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-orange-dark)' }}>{fmt(item.grand_total)}</td>
                       </>
                     )}
-
-                    {/* EXPENSES */}
                     {activeReport === 'expenses' && (
                       <>
-                        <td style={{ fontWeight: 600 }}>{row.category}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(row.total)}</td>
+                        <td style={{ fontWeight: 600 }}>{item.category}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>{fmt(item.total)}</td>
                       </>
                     )}
-
-                    {/* CUSTOMERS */}
                     {activeReport === 'customers' && (
                       <>
-                        <td style={{ fontWeight: 600, color: 'var(--color-green)' }}>{row.name}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--color-green)' }}>{item.name}</td>
                         <td>
-                          <div>{row.mobile}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{row.place || '-'}</div>
+                          <div>{item.mobile}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.place || '-'}</div>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          <span className="badge" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-main)' }}>{row.total_bills} bills</span>
+                          <span className="badge" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-main)' }}>{item.total_bills} bills</span>
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(row.total_spent)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: (row.outstanding_balance > 0) ? 'var(--color-danger)' : 'inherit' }}>
-                          {fmt(row.outstanding_balance)}
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(item.total_spent)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: (item.outstanding_balance > 0) ? 'var(--color-danger)' : 'inherit' }}>
+                          {fmt(item.outstanding_balance)}
                         </td>
                       </>
                     )}
-
-                    {/* RECEIVABLES */}
                     {activeReport === 'receivables' && (
                       <>
-                        <td style={{ fontWeight: 600, color: 'var(--color-green)' }}>{row.name}</td>
-                        <td>
-                          <div>{row.mobile}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{row.place || '-'}</div>
+                        <td style={{ fontWeight: 700 }}>{item.name}</td>
+                        <td>{item.mobile}</td>
+                        <td>{item.place || '-'}</td>
+                        <td>{item.last_purchase_date || 'Never'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-danger)' }}>
+                          {fmt(item.outstanding_balance)}
                         </td>
-                        <td>{row.last_purchase_date || '-'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--color-danger)', fontSize: '1.05rem' }}>
-                          {fmt(row.outstanding_balance)}
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => setCustomerId(item.id)} className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                            View Ledger
+                          </button>
+                        </td>
+                      </>
+                    )}
+                    {activeReport === 'payments' && (
+                      <>
+                        <td>{item.payment_date}</td>
+                        <td style={{ fontWeight: 700 }}>{item.bill_number ? `${item.bill_number}` : (item.reference_number || '-')}</td>
+                        <td>{item.customer_name}</td>
+                        <td><span className="badge badge-info">{item.payment_method}</span></td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-green)' }}>
+                          {fmt(item.amount_received)}
+                        </td>
+                        <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>
+                          {item.discount > 0 ? fmt(item.discount) : '-'}
+                        </td>
+                      </>
+                    )}
+                    {activeReport === 'discounts' && (
+                      <>
+                        <td>{item.date}</td>
+                        <td>
+                          <span className={`badge ${item.type === 'Bill Discount' ? 'badge-warning' : 'badge-primary'}`}>
+                            {item.type}
+                          </span>
+                          {item.bill_number && <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>{item.bill_number}</div>}
+                        </td>
+                        <td style={{ fontWeight: 700 }}>{item.customer_name}</td>
+                        <td>{fmt(item.grand_total)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--color-orange)' }}>
+                          {fmt(item.discount)}
                         </td>
                       </>
                     )}

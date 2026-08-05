@@ -89,7 +89,8 @@ router.get('/:id', verifyToken, async (req, res) => {
     }
 
     const items = await query('SELECT * FROM invoice_items WHERE invoice_id = ?', [id]);
-    res.json({ invoice: invoices[0], items });
+    const payments = await query('SELECT * FROM payments WHERE bill_id = ? ORDER BY payment_date DESC, created_at DESC', [id]);
+    res.json({ invoice: invoices[0], items, payments });
   } catch (err) {
     console.error('Fetch single invoice error:', err);
     res.status(500).json({ error: 'Error fetching invoice details.' });
@@ -136,14 +137,30 @@ router.post('/', verifyToken, async (req, res) => {
       totalWeight += parseFloat(item.quantity || 0);
     });
 
+    let payment_status = 'Pending';
+    if (remAmt <= 0) {
+      payment_status = 'Collected';
+    } else if (paidAmt > 0) {
+      payment_status = 'Partial';
+    }
+
     // 2. Insert Invoice
     const invoiceResult = await query(
-      `INSERT INTO invoices (bill_number, customer_id, invoice_date, total_weight, discount, previous_balance, grand_total, paid_amount, remaining_amount, payment_method, notes) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [billNumber, customer_id, dateVal, totalWeight, disc, prevBal, gTotal, paidAmt, remAmt, payMethod, notes || '']
+      `INSERT INTO invoices (bill_number, customer_id, invoice_date, total_weight, discount, previous_balance, grand_total, paid_amount, remaining_amount, payment_method, payment_status, notes) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [billNumber, customer_id, dateVal, totalWeight, disc, prevBal, gTotal, paidAmt, remAmt, payMethod, payment_status, notes || '']
     );
 
     const invoiceId = invoiceResult.insertId;
+
+    // 2.5 Insert initial payment if any
+    if (paidAmt > 0) {
+      await query(
+        `INSERT INTO payments (bill_id, customer_id, amount_received, discount, payment_method, reference_number, notes, collected_by, payment_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [invoiceId, customer_id, paidAmt, 0, payMethod, '', 'Initial Payment', req.user?.username || 'admin', dateVal]
+      );
+    }
 
     // 3. Insert Items and deplete stocks
     for (const item of items) {

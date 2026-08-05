@@ -186,7 +186,9 @@ async function initSchema() {
       base_amount ${doubleType} DEFAULT 0,
       transport_charge ${doubleType} DEFAULT 0,
       labour_charge ${doubleType} DEFAULT 0,
+      packaging_charge ${doubleType} DEFAULT 0,
       other_charges ${doubleType} DEFAULT 0,
+      discount ${doubleType} DEFAULT 0,
       grand_total ${doubleType} NOT NULL,
       payment_method VARCHAR(50) DEFAULT 'Cash',
       remark TEXT,
@@ -220,6 +222,25 @@ async function initSchema() {
       remark TEXT,
       attachment VARCHAR(255),
       created_at ${datetimeType}
+    )
+  `);
+
+  // 15. payments table (Payment Collection & Bill Settlement)
+  await query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id ${pk},
+      bill_id INTEGER NOT NULL,
+      customer_id INTEGER NOT NULL,
+      amount_received ${doubleType} DEFAULT 0,
+      discount ${doubleType} DEFAULT 0,
+      payment_method VARCHAR(50) DEFAULT 'Cash',
+      reference_number VARCHAR(255),
+      notes TEXT,
+      collected_by VARCHAR(255),
+      payment_date VARCHAR(100),
+      created_at ${datetimeType},
+      FOREIGN KEY(bill_id) REFERENCES invoices(id),
+      FOREIGN KEY(customer_id) REFERENCES customers(id)
     )
   `);
 
@@ -327,6 +348,38 @@ async function initSchema() {
   try {
     await query("ALTER TABLE purchase_invoices ADD COLUMN supplier_name VARCHAR(255)");
     console.log("Migration: Added supplier_name to purchase_invoices");
+  } catch (err) {
+    // Ignore
+  }
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN packaging_charge REAL DEFAULT 0");
+    console.log("Migration: Added packaging_charge to purchase_invoices");
+  } catch (err) {
+    // Ignore
+  }
+
+  try {
+    await query("ALTER TABLE purchase_invoices ADD COLUMN discount REAL DEFAULT 0");
+    console.log("Migration: Added discount to purchase_invoices");
+  } catch (err) {
+    // Ignore
+  }
+
+  try {
+    await query("ALTER TABLE invoices ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Unpaid'");
+    console.log("Migration: Added payment_status to invoices");
+    
+    // Backfill status
+    await query(`
+      UPDATE invoices 
+      SET payment_status = CASE 
+        WHEN remaining_amount <= 0 THEN 'Collected'
+        WHEN paid_amount > 0 AND remaining_amount > 0 THEN 'Partial'
+        ELSE 'Pending'
+      END
+    `);
+    console.log("Migration: Backfilled payment_status for invoices");
   } catch (err) {
     // Ignore
   }

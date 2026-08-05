@@ -28,6 +28,8 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
 
   // Manual payment states
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [discountType, setDiscountType] = useState('Fixed Amount');
+  const [discountValue, setDiscountValue] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentRemarks, setPaymentRemarks] = useState('');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -170,8 +172,17 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
   const handleAddPayment = async (e) => {
     e.preventDefault();
     setPaymentMsg('');
-    setError('');
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) return;
+
+    let computedDiscount = 0;
+    if (discountValue) {
+      if (discountType === 'Fixed Amount') {
+        computedDiscount = parseFloat(discountValue) || 0;
+      } else {
+        computedDiscount = profile.outstanding_balance * ((parseFloat(discountValue) || 0) / 100);
+      }
+    }
+    
+    if ((!paymentAmount || parseFloat(paymentAmount) <= 0) && computedDiscount <= 0) return;
 
     try {
       const res = await fetch(`${API_URL}/api/customers/${customerId}/payment`, {
@@ -181,24 +192,24 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          amount: paymentAmount,
+          amount: paymentAmount || 0,
+          discount: computedDiscount,
           payment_method: paymentMethod,
           remarks: paymentRemarks,
           date: paymentDate
         })
       });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || 'Failed to apply payment.');
-
-      setPaymentAmount('');
-      setPaymentRemarks('');
-      setPaymentMsg('Payment applied successfully!');
       
-      // Reload profile
+      setPaymentAmount('');
+      setDiscountValue('');
+      setPaymentRemarks('');
+      setPaymentMsg('Payment/Discount applied successfully!');
       fetchCustomerProfile(customerId);
+      setTimeout(() => setPaymentMsg(''), 3000);
     } catch (err) {
-      setError(err.message);
+      alert(err.message);
     }
   };
 
@@ -224,17 +235,17 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
     });
 
     ledger.payments.forEach(pay => {
-      if (ledgerSearch && pay.remarks && !pay.remarks.toLowerCase().includes(ledgerSearch.toLowerCase())) return;
+      if (ledgerSearch && pay.notes && !pay.notes.toLowerCase().includes(ledgerSearch.toLowerCase())) return;
       items.push({
         id: `PAY-${pay.id}`,
         dbId: pay.id,
         date: pay.payment_date,
         type: 'Receipt (જમા)',
-        docNo: `PAY-${pay.id}`,
-        details: `${pay.payment_method} Payment - ${pay.remarks || 'Outstanding cleared'}`,
+        docNo: pay.bill_number ? `PAY-${pay.id} (${pay.bill_number})` : `PAY-${pay.id}`,
+        details: `${pay.payment_method} Payment - ${pay.notes || 'Outstanding cleared'}`,
         debit: 0,
-        credit: pay.amount,
-        paid: pay.amount,
+        credit: pay.amount_received + (pay.discount || 0),
+        paid: pay.amount_received,
         action: 'none'
       });
     });
@@ -366,6 +377,26 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
               </div>
               <div className="stats-icon" style={{ backgroundColor: 'var(--color-green-light)', color: 'var(--color-green)' }}>
                 <Receipt size={20} />
+              </div>
+            </div>
+
+            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Received</span>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{(profile.total_received || 0).toFixed(2)}</h3>
+              </div>
+              <div className="stats-icon" style={{ backgroundColor: 'var(--color-blue-light)', color: 'var(--color-blue)' }}>
+                <DollarSign size={20} />
+              </div>
+            </div>
+
+            <div className="glass-card stats-card" style={{ padding: '1rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total Discount</span>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{(profile.total_discount || 0).toFixed(2)}</h3>
+              </div>
+              <div className="stats-icon" style={{ backgroundColor: 'rgba(2, 136, 209, 0.1)', color: 'var(--color-info)' }}>
+                <History size={20} />
               </div>
             </div>
 
@@ -537,53 +568,102 @@ export default function Customers({ customerId, setCustomerId, token, API_URL, s
                       placeholder="₹0.00"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      required
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Payment Mode</label>
-                    <select
-                      className="form-control"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI (GooglePay/PhonePe)</option>
-                      <option value="Card">Card</option>
-                      <option value="Bank">Bank Transfer</option>
-                    </select>
+                    <label className="form-label">Discount Type</label>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '5px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input type="radio" checked={discountType === 'Fixed Amount'} onChange={() => setDiscountType('Fixed Amount')} />
+                        Fixed Amount
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                        <input type="radio" checked={discountType === 'Percentage'} onChange={() => setDiscountType('Percentage')} />
+                        Percentage
+                      </label>
+                    </div>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Payment Date</label>
+                    <label className="form-label">Discount Value {discountType === 'Percentage' ? '(%)' : '(₹)'}</label>
                     <input
-                      type="date"
+                      type="number"
+                      step="0.01"
                       className="form-control"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      required
+                      placeholder={discountType === 'Percentage' ? '10' : '₹0.00'}
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(e.target.value)}
                     />
                   </div>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Payment Mode</label>
+                      <select
+                        className="form-control"
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI (GooglePay/PhonePe)</option>
+                        <option value="Card">Card</option>
+                        <option value="Bank">Bank Transfer</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Payment Date</label>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="form-group">
-                    <label className="form-label">Remarks / Description</label>
+                    <label className="form-label">Discount Reason / Remarks</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. Outstanding cleared partially"
+                      placeholder="e.g. Cleared early, or manual offset"
                       value={paymentRemarks}
                       onChange={(e) => setPaymentRemarks(e.target.value)}
                     />
+                  </div>
+
+                  <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', border: '1px solid var(--border-light)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                       <span style={{ color: 'var(--text-muted)' }}>Outstanding Before:</span> 
+                       <strong style={{ fontSize: '1rem' }}>₹{(profile.outstanding_balance || 0).toFixed(2)}</strong>
+                    </div>
+                    {(() => {
+                      const computedDiscount = (discountType === 'Fixed Amount' ? parseFloat(discountValue || 0) : ((profile.outstanding_balance || 0) * (parseFloat(discountValue || 0) / 100)));
+                      const finalAdjustment = parseFloat(paymentAmount || 0) + computedDiscount;
+                      return (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                             <span style={{ color: 'var(--text-muted)' }}>Final Adjustment (Paid + Disc):</span> 
+                             <strong style={{ color: 'var(--color-green)' }}>₹{finalAdjustment.toFixed(2)}</strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-danger)', borderTop: '1px solid var(--border-light)', paddingTop: '6px', marginTop: '4px' }}>
+                             <span>Outstanding After:</span> 
+                             <strong style={{ fontSize: '1.1rem' }}>₹{(profile.outstanding_balance - finalAdjustment).toFixed(2)}</strong>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <button 
                     type="submit" 
                     className="btn btn-highlight" 
                     style={{ width: '100%' }}
-                    disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                    disabled={(!paymentAmount || parseFloat(paymentAmount) <= 0) && (!discountValue || parseFloat(discountValue) <= 0)}
                   >
-                    Post Outstanding Receipt
+                    Post Receipt
                   </button>
                 </form>
               </div>

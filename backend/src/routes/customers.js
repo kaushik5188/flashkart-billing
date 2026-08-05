@@ -163,7 +163,14 @@ router.get('/:id', verifyToken, async (req, res) => {
     if (list.length === 0) {
       return res.status(404).json({ error: 'Customer not found.' });
     }
-    res.json(list[0]);
+    const customer = list[0];
+    
+    // Calculate total received and total discount from payments table
+    const paymentsSummary = await query('SELECT SUM(amount_received) as total_received, SUM(discount) as total_discount FROM payments WHERE customer_id = ?', [id]);
+    customer.total_received = paymentsSummary[0]?.total_received || 0;
+    customer.total_discount = paymentsSummary[0]?.total_discount || 0;
+
+    res.json(customer);
   } catch (err) {
     res.status(500).json({ error: 'Error fetching customer profile.' });
   }
@@ -194,22 +201,22 @@ router.get('/:id/history', verifyToken, async (req, res) => {
     sql += ' ORDER BY created_at DESC';
     const bills = await query(sql, params);
 
-    // Fetch payments list
-    let paySql = 'SELECT * FROM customer_payments WHERE customer_id = ?';
+    // Fetch payments list from new payments table
+    let paySql = 'SELECT p.*, i.bill_number FROM payments p LEFT JOIN invoices i ON p.bill_id = i.id WHERE p.customer_id = ?';
     let payParams = [id];
     if (date) {
-      paySql += ' AND payment_date = ?';
+      paySql += ' AND p.payment_date = ?';
       payParams.push(date);
     } else if (month && year) {
       const monthPrefix = `${year}-${month.padStart(2, '0')}%`;
-      paySql += ' AND payment_date LIKE ?';
+      paySql += ' AND p.payment_date LIKE ?';
       payParams.push(monthPrefix);
     } else if (year) {
       const yearPrefix = `${year}%`;
-      paySql += ' AND payment_date LIKE ?';
+      paySql += ' AND p.payment_date LIKE ?';
       payParams.push(yearPrefix);
     }
-    paySql += ' ORDER BY created_at DESC';
+    paySql += ' ORDER BY p.created_at DESC';
     const payments = await query(paySql, payParams);
 
     res.json({ invoices: bills, payments });
@@ -222,10 +229,13 @@ router.get('/:id/history', verifyToken, async (req, res) => {
 // Add manual payment (outstanding balance offset)
 router.post('/:id/payment', verifyToken, async (req, res) => {
   const { id } = req.params;
-  const { amount, payment_method, remarks, date } = req.body;
+  const { amount, discount, payment_method, remarks, date } = req.body;
 
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ error: 'Payment amount must be greater than zero.' });
+  const parsedAmount = parseFloat(amount || 0);
+  const parsedDiscount = parseFloat(discount || 0);
+
+  if (parsedAmount <= 0 && parsedDiscount <= 0) {
+    return res.status(400).json({ error: 'Payment amount or discount must be greater than zero.' });
   }
 
   const paymentDate = date || new Date().toISOString().split('T')[0];
@@ -235,18 +245,16 @@ router.post('/:id/payment', verifyToken, async (req, res) => {
     if (customer.length === 0) {
       return res.status(404).json({ error: 'Customer not found.' });
     }
-
-    const parsedAmount = parseFloat(amount);
     
     // Add payment entry
     await query(
-      `INSERT INTO customer_payments (customer_id, payment_date, amount, payment_method, remarks) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [id, paymentDate, parsedAmount, payment_method || 'Cash', remarks || '']
+      `INSERT INTO payments (bill_id, customer_id, payment_date, amount_received, discount, payment_method, notes, collected_by) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [0, id, paymentDate, parsedAmount, parsedDiscount, payment_method || 'Cash', remarks || 'Manual Offset', req.user?.username || 'admin']
     );
 
     // Reduce outstanding balance
-    const newBalance = customer[0].outstanding_balance - parsedAmount;
+    const newBalance = customer[0].outstanding_balance - (parsedAmount + parsedDiscount);
     await query('UPDATE customers SET outstanding_balance = ? WHERE id = ?', [newBalance, id]);
 
     // Add activity log

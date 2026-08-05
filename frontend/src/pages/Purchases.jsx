@@ -26,7 +26,8 @@ export default function Purchases({ token, API_URL }) {
     market_name: '',
     transport_charge: '',
     labour_charge: '',
-    other_charge: '',
+    packaging_charge: '',
+    other_charges: '',
     discount: '',
     payment_method: 'Cash',
     remark: ''
@@ -122,9 +123,10 @@ export default function Purchases({ token, API_URL }) {
   const baseAmount = cart.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
   const t = parseFloat(formData.transport_charge) || 0;
   const l = parseFloat(formData.labour_charge) || 0;
-  const o = parseFloat(formData.other_charge) || 0;
+  const p_c = parseFloat(formData.packaging_charge) || 0;
+  const o = parseFloat(formData.other_charges) || 0;
   const d = parseFloat(formData.discount) || 0;
-  const grandTotal = baseAmount + t + l + o - d;
+  const grandTotal = baseAmount + t + l + p_c + o - d;
 
   // Submit the entire cart to the backend
   const handleSubmit = async (e) => {
@@ -175,7 +177,8 @@ export default function Purchases({ token, API_URL }) {
         market_name: '',
         transport_charge: '',
         labour_charge: '',
-        other_charge: '',
+        packaging_charge: '',
+        other_charges: '',
         discount: '',
         remark: ''
       });
@@ -222,7 +225,8 @@ export default function Purchases({ token, API_URL }) {
       market_name: p.market_name || '',
       transport_charge: p.transport_charge || '',
       labour_charge: p.labour_charge || '',
-      other_charge: p.other_charges || '',
+      packaging_charge: p.packaging_charge || '',
+      other_charges: p.other_charges || '',
       discount: p.discount || '',
       payment_method: p.payment_method || 'Cash',
       remark: p.remark || ''
@@ -393,7 +397,7 @@ export default function Purchases({ token, API_URL }) {
               </div>
             </div>
             <div style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.5rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Transport (₹)</label>
                   <input type="number" step="0.01" name="transport_charge" className="form-control" value={formData.transport_charge} onChange={handleChange} />
@@ -403,8 +407,12 @@ export default function Purchases({ token, API_URL }) {
                   <input type="number" step="0.01" name="labour_charge" className="form-control" value={formData.labour_charge} onChange={handleChange} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Packaging (₹)</label>
+                  <input type="number" step="0.01" name="packaging_charge" className="form-control" value={formData.packaging_charge} onChange={handleChange} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Other (₹)</label>
-                  <input type="number" step="0.01" name="other_charge" className="form-control" value={formData.other_charge} onChange={handleChange} />
+                  <input type="number" step="0.01" name="other_charges" className="form-control" value={formData.other_charges} onChange={handleChange} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Discount (₹)</label>
@@ -512,7 +520,9 @@ export default function Purchases({ token, API_URL }) {
                                 <div style={{ color: 'var(--text-muted)' }}>Additional Charges:</div>
                                 <div>Transport: ₹{p.transport_charge || 0}</div>
                                 <div>Labour: ₹{p.labour_charge || 0}</div>
+                                <div>Packaging: ₹{p.packaging_charge || 0}</div>
                                 <div>Other: ₹{p.other_charges || 0}</div>
+                                {p.discount > 0 && <div>Discount: -₹{p.discount}</div>}
                               </div>
                               <div style={{ textAlign: 'right' }}>
                                 <div style={{ color: 'var(--text-muted)' }}>Payment Method: <strong>{p.payment_method}</strong></div>

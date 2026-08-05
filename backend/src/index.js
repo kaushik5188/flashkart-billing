@@ -18,6 +18,7 @@ const usersRouter = require('./routes/users');
 const expensesRouter = require('./routes/expenses');
 const suppliersRouter = require('./routes/suppliers');
 const purchasesRouter = require('./routes/purchases');
+const paymentsRouter = require('./routes/payments');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +47,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/purchases', purchasesRouter);
+app.use('/api/payments', paymentsRouter);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

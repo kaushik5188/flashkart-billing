@@ -389,17 +389,43 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                                 </td>
                               </tr>
                               <tr>
-                                <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>TOTAL AMOUNT (₹)</td>
+                                <td style={summaryLabelCell('#2E7D32', '#FFFFFF')}>SUB TOTAL (₹)</td>
                                 <td style={summaryValCell('#E8F5E9', '#1B5E20', false, true)}>
                                   {subtotal > 0 ? '₹ ' + subtotal.toFixed(2) : ''}
                                 </td>
                               </tr>
+                              {invoice.discount > 0 && (
+                                <tr>
+                                  <td style={summaryLabelCell('#E65100', '#FFFFFF')}>DISCOUNT (₹)</td>
+                                  <td style={summaryValCell('#FFF3E0', '#E65100', false, true)}>
+                                    ₹ {invoice.discount.toFixed(2)}
+                                  </td>
+                                </tr>
+                              )}
                               <tr>
                                 <td style={{ ...summaryLabelCell('#1B5E20', '#FFFFFF'), fontSize: '12px', fontWeight: 900, letterSpacing: '0.5px' }}>GRAND TOTAL</td>
                                 <td style={{ ...summaryValCell('#1B5E20', '#FFFFFF', true), fontSize: '14px', fontWeight: 900 }}>
                                   ₹ {finalBillTotal.toFixed(2)}
                                 </td>
                               </tr>
+                              {invoice.paid_amount > 0 && (
+                                <tr>
+                                  <td style={summaryLabelCell('#1565C0', '#FFFFFF')}>PAID AMOUNT (₹)</td>
+                                  <td style={summaryValCell('#E3F2FD', '#1565C0', false, true)}>
+                                    ₹ {invoice.paid_amount.toFixed(2)}
+                                  </td>
+                                </tr>
+                              )}
+                              {(invoice.remaining_amount > 0 || invoice.paid_amount > 0) && (
+                                <tr>
+                                  <td style={{ ...summaryLabelCell(invoice.remaining_amount > 0 ? '#D32F2F' : '#2E7D32', '#FFFFFF'), fontSize: '11px', fontWeight: 800 }}>
+                                    {invoice.remaining_amount > 0 ? 'BALANCE DUE' : 'PAYMENT STATUS'}
+                                  </td>
+                                  <td style={{ ...summaryValCell(invoice.remaining_amount > 0 ? '#FFEBEE' : '#E8F5E9', invoice.remaining_amount > 0 ? '#D32F2F' : '#2E7D32', false, true), fontSize: '12px', fontWeight: 900 }}>
+                                    {invoice.remaining_amount > 0 ? `₹ ${invoice.remaining_amount.toFixed(2)}` : 'COLLECTED'}
+                                  </td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
