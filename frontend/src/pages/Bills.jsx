@@ -21,7 +21,9 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
   const [payRef, setPayRef] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState('');
 
   const fetchBills = useCallback(async () => {
     setLoading(true);
@@ -76,7 +78,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
   const handleCollectPaymentSubmit = async (e) => {
     e.preventDefault();
     setPayLoading(true);
-    setError('');
+    setPayError('');
     try {
       const res = await fetch(`${API_URL}/api/payments`, {
         method: 'POST',
@@ -102,7 +104,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
       fetchBills();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message);
+      setPayError(err.message);
     } finally {
       setPayLoading(false);
     }
@@ -116,6 +118,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
     setPayRef('');
     setPayNotes('');
     setPayDate(new Date().toISOString().split('T')[0]);
+    setPayError('');
 
     try {
       const res = await fetch(`${API_URL}/api/billing/${bill.id}`, {
@@ -279,6 +282,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
               <button onClick={() => setPaymentModal({ isOpen: false, bill: null })} className="btn-close"><X size={20}/></button>
             </div>
             <div className="modal-body">
+              {payError && <div className="badge badge-danger" style={{ width:'100%', padding:'0.75rem', marginBottom:'1rem', justifyContent:'center', borderRadius:'8px' }}><AlertCircle size={15}/> {payError}</div>}
               <form onSubmit={handleCollectPaymentSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div className="form-group">
