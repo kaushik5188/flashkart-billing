@@ -223,7 +223,28 @@ export default function Purchases({ token, API_URL }) {
     }
   };
 
-  const handleEditInvoice = (p) => {
+  const handleEditInvoice = async (p) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/purchases/${p.id}/items`, { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const items = await res.json();
+        setCart(items.map(item => ({
+          vegetable_name: item.vegetable_name,
+          quantity: item.quantity,
+          purchase_rate: item.purchase_rate,
+          total_amount: item.total_amount
+        })));
+      } else {
+        setCart([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setCart([]);
+    } finally {
+      setLoading(false);
+    }
+
     setFormData({
       purchase_date: p.purchase_date,
       supplier_name: p.supplier_name || '',
@@ -237,12 +258,6 @@ export default function Purchases({ token, API_URL }) {
       payment_method: p.payment_method || 'Cash',
       remark: p.remark || ''
     });
-    setCart(invoiceItems.map(item => ({
-      vegetable_name: item.vegetable_name,
-      quantity: item.quantity,
-      purchase_rate: item.purchase_rate,
-      total_amount: item.total_amount
-    })));
     setEditingInvoiceId(p.id);
     setView('add');
   };

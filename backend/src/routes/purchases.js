@@ -136,7 +136,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       [
         supplier_name || 'Cash Purchase', partner_id || null, pDate, market_name, cart.length,
         base_amount || 0, transport_charge || 0, labour_charge || 0, packaging_charge || 0, 
-        other_charges || 0, discount || 0, grand_total, payment_method || 'Cash', remark, bill_photo, id
+        other_charges || 0, discount || 0, grand_total, payment_method || 'Cash', remark || null, bill_photo || null, id
       ]
     );
 
