@@ -3,22 +3,32 @@ const fs = require('fs');
 require('dotenv').config();
 
 let dbType = process.env.DB_TYPE || 'sqlite';
+if (process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('mysql') || process.env.DATABASE_URL.startsWith('postgres'))) {
+  // We assume MySQL for this app, even if URL scheme is slightly different on Vercel sometimes. 
+  // mysql2 supports URI strings.
+  dbType = 'mysql';
+}
 let sqliteDb = null;
 let mysqlPool = null;
 
 if (dbType === 'mysql') {
   const mysql = require('mysql2/promise');
-  mysqlPool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'flashkart',
-    port: process.env.DB_PORT || 3306,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-  });
-  console.log('Database initialized: MySQL');
+  if (process.env.DATABASE_URL) {
+    mysqlPool = mysql.createPool(process.env.DATABASE_URL);
+    console.log('Database initialized: MySQL (via DATABASE_URL)');
+  } else {
+    mysqlPool = mysql.createPool({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'flashkart',
+      port: process.env.DB_PORT || 3306,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+    console.log('Database initialized: MySQL');
+  }
 } else {
   const sqlite3 = require('sqlite3').verbose();
   const dbDir = path.join(__dirname, '../../data');

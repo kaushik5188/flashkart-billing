@@ -155,8 +155,14 @@ export default function Purchases({ token, API_URL }) {
         grand_total: grandTotal
       };
 
-      const res = await fetch(`${API_URL}/api/purchases`, {
-        method: 'POST',
+      const url = editingInvoiceId 
+        ? `${API_URL}/api/purchases/${editingInvoiceId}`
+        : `${API_URL}/api/purchases`;
+        
+      const method = editingInvoiceId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

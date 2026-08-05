@@ -355,6 +355,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
                       <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-muted)' }}>
                         <th style={{ textAlign: 'left', padding: '4px 0' }}>Date</th>
                         <th style={{ textAlign: 'left', padding: '4px 0' }}>Method</th>
+                        <th style={{ textAlign: 'left', padding: '4px 0' }}>Notes</th>
                         <th style={{ textAlign: 'right', padding: '4px 0' }}>Amount</th>
                         <th style={{ textAlign: 'right', padding: '4px 0' }}>Discount</th>
                       </tr>
@@ -364,6 +365,7 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
                         <tr key={ph.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                           <td style={{ padding: '6px 0' }}>{fmtDate(ph.payment_date)}</td>
                           <td style={{ padding: '6px 0' }}>{ph.payment_method}</td>
+                          <td style={{ padding: '6px 0', color: 'var(--text-muted)' }}>{ph.notes || '-'}</td>
                           <td style={{ textAlign: 'right', padding: '6px 0', fontWeight: 600, color: 'var(--color-green)' }}>{fmt(ph.amount_received)}</td>
                           <td style={{ textAlign: 'right', padding: '6px 0', color: 'var(--color-orange)' }}>{fmt(ph.discount)}</td>
                         </tr>
