@@ -21,7 +21,6 @@ export default function Bills({ token, API_URL, onEditBill, onPrintBill }) {
   const [payRef, setPayRef] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState('');
 
