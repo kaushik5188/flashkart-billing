@@ -8,7 +8,6 @@ import {
   Calendar,
   FileSpreadsheet,
   Printer,
-  Printer,
   ShoppingCart,
   Wallet,
   Receipt,
@@ -167,28 +166,7 @@ export default function Reports({ token, API_URL, setCustomerId, setView }) {
       </header>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-        {[
-          { id: 'sales', icon: TrendingUp, label: 'Sales & Profit' },
-          { id: 'products', icon: BarChart3, label: 'Vegetable Sales' },
-          { id: 'purchases', icon: ShoppingCart, label: 'Purchases' },
-          { id: 'expenses', icon: Wallet, label: 'Expenses' },
-          { id: 'customers', icon: Users, label: 'Customer wise' },
-          { id: 'receivables', icon: AlertTriangle, label: 'Pending Payments' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveReport(tab.id)}
-            className="btn"
-            style={{
-              backgroundColor: activeReport === tab.id ? 'var(--color-green-light)' : 'transparent',
-              color: activeReport === tab.id ? 'var(--color-green-dark)' : 'var(--text-main)',
-              border: activeReport === tab.id ? '1px solid var(--color-green)' : '1px solid var(--border-light)',
-              fontWeight: activeReport === tab.id ? 700 : 500,
-              padding: '0.5rem 1rem'
-            }}
-          >
-            <tab.icon size={16} /> {tab.label}
+
       <div className="glass-card" style={{ padding: '0.5rem', display: 'flex', gap: '5px', overflowX: 'auto', marginBottom: '1.5rem', whiteSpace: 'nowrap' }}>
         <button className={`btn ${activeReport === 'sales' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveReport('sales')}>
           <BarChart3 size={15}/> Sales Summary
