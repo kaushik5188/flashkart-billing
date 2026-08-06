@@ -429,14 +429,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                                   ₹ {finalBillTotal.toFixed(2)}
                                 </td>
                               </tr>
-                              {invoice.paid_amount > 0 && (
-                                <tr>
-                                  <td style={summaryLabelCell('#1565C0', '#FFFFFF')}>PAID AMOUNT (₹)</td>
-                                  <td style={summaryValCell('#E3F2FD', '#1565C0', false, true)}>
-                                    ₹ {invoice.paid_amount.toFixed(2)}
-                                  </td>
-                                </tr>
-                              )}
+
 
                             </tbody>
                           </table>
