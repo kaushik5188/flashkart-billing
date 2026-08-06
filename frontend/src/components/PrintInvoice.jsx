@@ -65,14 +65,21 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
 
   const handlePrint = () => window.print();
 
-  const getPdfOptions = (inv) => ({
-    margin: 0,
-    filename: `Invoice_${inv.bill_number}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, scrollY: 0, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'] }
-  });
+  const getPdfOptions = (inv) => {
+    const custName = (inv.customer_name || '').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
+    const custAddr = (inv.customer_place || inv.customer_address || '').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
+    const prefix = [custName, custAddr].filter(Boolean).join('_');
+    const filename = prefix ? `${prefix}_${inv.bill_number}.pdf` : `Invoice_${inv.bill_number}.pdf`;
+    
+    return {
+      margin: 0,
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, scrollY: 0, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+  };
 
   const handleWhatsApp = () => {
     if (!invoice) return;
