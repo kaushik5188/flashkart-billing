@@ -437,16 +437,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
                                   </td>
                                 </tr>
                               )}
-                              {(invoice.remaining_amount > 0 || invoice.paid_amount > 0) && (
-                                <tr>
-                                  <td style={{ ...summaryLabelCell(invoice.remaining_amount > 0 ? '#D32F2F' : '#2E7D32', '#FFFFFF'), fontSize: '11px', fontWeight: 800 }}>
-                                    {invoice.remaining_amount > 0 ? 'BALANCE DUE' : 'PAYMENT STATUS'}
-                                  </td>
-                                  <td style={{ ...summaryValCell(invoice.remaining_amount > 0 ? '#FFEBEE' : '#E8F5E9', invoice.remaining_amount > 0 ? '#D32F2F' : '#2E7D32', false, true), fontSize: '12px', fontWeight: 900 }}>
-                                    {invoice.remaining_amount > 0 ? `₹ ${invoice.remaining_amount.toFixed(2)}` : 'COLLECTED'}
-                                  </td>
-                                </tr>
-                              )}
+
                             </tbody>
                           </table>
                         </div>

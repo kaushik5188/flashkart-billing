@@ -133,6 +133,7 @@ export default function Purchases({ token, API_URL }) {
     e.preventDefault();
     if (cart.length === 0) {
       setError('Your cart is empty! Please add at least one vegetable.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     
@@ -141,15 +142,13 @@ export default function Purchases({ token, API_URL }) {
     setSuccess('');
 
     try {
-      if (editingInvoiceId) {
-        await fetch(`${API_URL}/api/purchases/${editingInvoiceId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      }
-
       const payload = {
         ...formData,
+        transport_charge: parseFloat(formData.transport_charge) || 0,
+        labour_charge: parseFloat(formData.labour_charge) || 0,
+        packaging_charge: parseFloat(formData.packaging_charge) || 0,
+        other_charges: parseFloat(formData.other_charges) || 0,
+        discount: parseFloat(formData.discount) || 0,
         cart,
         base_amount: baseAmount,
         grand_total: grandTotal
@@ -194,6 +193,7 @@ export default function Purchases({ token, API_URL }) {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
