@@ -206,7 +206,8 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
             return (
               <div key={pageIndex} className="fk-invoice-page html2pdf__page-break" style={{
                 width: '210mm',
-                height: '295mm', // Slightly less than A4 to prevent extra blank pages
+                height: '270mm', // Very safe height for A4 including large default printer margins
+                boxSizing: 'border-box',
                 backgroundColor: '#FFFFFF',
                 fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
                 color: '#1a1a1a',
