@@ -176,7 +176,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
           #fk-print-root { position: absolute; left: 0; top: 0; width: 100%; display: block !important; padding: 0 !important; }
           .fk-toolbar { display: none !important; }
           @page { size: A4 portrait; margin: 0; }
-          .fk-invoice-page { margin: 0 !important; box-shadow: none !important; border: none !important; page-break-after: always; }
+          .fk-invoice-page { margin: 0 !important; box-shadow: none !important; border: none !important; page-break-after: always; page-break-inside: avoid; }
           .fk-invoice-page:last-child { page-break-after: auto; }
         }
       `}</style>
@@ -206,7 +206,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
             return (
               <div key={pageIndex} className="fk-invoice-page html2pdf__page-break" style={{
                 width: '210mm',
-                height: '296.5mm', // Almost exactly A4 height
+                height: '295mm', // Slightly less than A4 to prevent extra blank pages
                 backgroundColor: '#FFFFFF',
                 fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
                 color: '#1a1a1a',
