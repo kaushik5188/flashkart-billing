@@ -145,7 +145,7 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
   }
 
   // ---- Pagination Logic ----
-  const ITEMS_PER_PAGE = 25;
+  const ITEMS_PER_PAGE = 20;
   const chunkedItems = [];
   if (!items || items.length === 0) {
     chunkedItems.push([]);
