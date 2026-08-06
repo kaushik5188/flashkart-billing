@@ -67,9 +67,18 @@ export default function PrintInvoice({ invoiceId, token, API_URL, onClose }) {
 
   const getPdfOptions = (inv) => {
     const custName = (inv.customer_name || '').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
-    const custAddr = (inv.customer_place || inv.customer_address || '').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
-    const prefix = [custName, custAddr].filter(Boolean).join('_');
-    const filename = prefix ? `${prefix}_${inv.bill_number}.pdf` : `Invoice_${inv.bill_number}.pdf`;
+    
+    // Make the address/place short so it doesn't cause a huge filename
+    let rawPlace = (inv.customer_place || inv.customer_address || '').replace(/[^a-zA-Z0-9 ]/g, '').trim();
+    if (rawPlace.length > 15) {
+      rawPlace = rawPlace.substring(0, 15); // limit to 15 chars
+    }
+    const custAddr = rawPlace.replace(/\s+/g, '_');
+    
+    const dateStr = inv.invoice_date ? inv.invoice_date : '';
+    
+    const prefix = [custName, custAddr, dateStr].filter(Boolean).join('_');
+    const filename = prefix ? `${prefix}.pdf` : `Invoice_${inv.bill_number}.pdf`;
     
     return {
       margin: 0,
